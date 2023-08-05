@@ -117,9 +117,11 @@ class GrabRevisions extends TextGrabber {
 			if ( $pages ) {
 				$misserModeCount = $resultsCount = 0;
 				foreach ( $pages as $page ) {
-					$title = new PageIdentityValue( $page['pageid'], $page['ns'], $page['title'], PageIdentityValue::LOCAL );
+					$pageIdent = new PageIdentityValue(
+						$page['pageid'], $page['ns'], $page['title'], PageIdentityValue::LOCAL
+					);
 					foreach ( $page['revisions'] as $revision ) {
-						$this->processRevision( $revision, $page['pageid'], Title::castFromPageIdentity( $title ) );
+						$this->processRevision( $revision, $page['pageid'], $pageIdent );
 						$resultsCount++;
 						$lastTimestamp = $revision['timestamp'];
 					}

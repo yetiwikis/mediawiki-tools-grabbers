@@ -200,8 +200,6 @@ abstract class TextGrabber extends ExternalWikiGrabber {
 			$this->insertTags( $revision['tags'], $revid );
 		}
 
-		$this->dbw->commit();
-
 		return true;
 	}
 
@@ -320,7 +318,6 @@ abstract class TextGrabber extends ExternalWikiGrabber {
 		if ( isset( $revision['tags'] ) && count( $revision['tags'] ) > 0 ) {
 			$this->insertTags( $revision['tags'], $revisionId, null );
 		}
-		$this->dbw->commit();
 
 		return true;
 	}

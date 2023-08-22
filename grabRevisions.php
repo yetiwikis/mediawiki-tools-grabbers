@@ -81,6 +81,109 @@ class GrabRevisions extends TextGrabber {
 	}
 
 	/**
+	 * @param PageIdentity $page
+	 * @return int page_latest
+	 */
+	protected function checkPage( PageIdentity $page ) {
+		$pageRow = $this->dbw->selectRow(
+			'page',
+			[ 'page_latest', 'page_namespace', 'page_title' ],
+			[ 'page_id' => $page->getId() ],
+			__METHOD__
+		);
+
+		# If page is not present, check if title is present, because we can't insert
+		# a duplicate title. That would mean the page was moved leaving a redirect but
+		# we haven't processed the move yet
+		if ( $pageRow === false ||
+			$pageRow->page_namespace != $page->getNamespace() ||
+			$pageRow->page_title != $page->getDBkey()
+		) {
+			$conflictingPageID = $this->getPageID( $page->getNamespace(), $page->getDBkey() );
+			if ( $conflictingPageID ) {
+				# Whoops...
+				$this->resolveConflictingTitle( $page->getNamespace(), $page->getDBkey(), $page->getId(), $conflictingPageID );
+			}
+		}
+
+		return $pageRow ? (int)$pageRow->page_latest : 0;
+	}
+
+	protected function insertOrUpdatePage( array $pageInfo ) {
+		$pageID = $pageInfo['pageid'];
+		$lastRevision = $pageInfo['revisions'][count( $pageInfo['revisions'] ) - 1];
+		$page_e = [
+			'namespace' => $pageInfo['ns'],
+			# Trim and convert displayed title to database page title
+			'title' => $this->sanitiseTitle( $pageInfo['ns'], $pageInfo['title'] ),
+			'is_redirect' => false,
+			'is_new' => false,
+			'random' => wfRandom(),
+			'touched' => wfTimestampNow(),
+			'len' => $lastRevision['size'],
+			'content_model' => null,
+			'latest' => $lastRevision['revid'],
+		];
+
+		# We kind of need this to resume...
+		$this->output( "Title: {$page_e['title']} in namespace {$page_e['namespace']}\n" );
+		$title = Title::makeTitle( $page_e['namespace'], $page_e['title'] );
+
+		# Get other information from api info
+		$defaultModel = null;
+		if ( isset( $pageInfo['contentmodel'] ) ) {
+			# This would be the most accurate way of getting the content model for a page.
+			# However it calls hooks and can be incredibly slow or cause errors
+			#$defaultModel = ContentHandler::getDefaultModelFor( $title );
+			$defaultModel = MediaWikiServices::getInstance()->getNamespaceInfo()
+				->getNamespaceContentModel( $pageInfo['ns'] ) || CONTENT_MODEL_WIKITEXT;
+			# Set only if not the default content model
+			if ( $defaultModel != $pageInfo['contentmodel'] ) {
+				$page_e['content_model'] = $pageInfo['contentmodel'];
+			}
+		}
+
+		# Check if page is present
+		$pageIdent = new PageIdentityValue(
+			$pageInfo['pageid'], $pageInfo['ns'], $pageInfo['title'], PageIdentityValue::LOCAL
+		);
+		$pageLatest = $this->checkPage( $pageIdent );
+
+		$insert_fields = [
+			'page_namespace' => $page_e['namespace'],
+			'page_title' => $page_e['title'],
+			'page_is_redirect' => $page_e['is_redirect'],
+			'page_is_new' => $page_e['is_new'],
+			'page_random' => $page_e['random'],
+			'page_touched' => $page_e['touched'],
+			'page_latest' => $page_e['latest'],
+			'page_len' => $page_e['len'],
+			'page_content_model' => $page_e['content_model']
+		];
+		if ( !$pageLatest ) {
+			# insert if not present
+			$this->output( "Inserting page entry $pageID\n" );
+			$insert_fields['page_id'] = $pageID;
+			$this->dbw->insert(
+				'page',
+				$insert_fields,
+				__METHOD__
+			);
+		} elseif ( $pageLatest < (int)$page_e['latest'] ) {
+			# update existing
+			$this->output( "Updating page entry $pageID\n" );
+			$this->dbw->update(
+				'page',
+				$insert_fields,
+				[ 'page_id' => $pageID ],
+				__METHOD__
+			);
+		} else {
+			// $this->output( "No need to update page entry for $pageID\n" );
+		}
+	}
+
+	/**
 	 * Grabs all revisions from a given namespace
 	 *
 	 * @param string $ns Namespaces to process, separate by '|'.
@@ -88,7 +191,7 @@ class GrabRevisions extends TextGrabber {
 	 * @param string $arvend Timestamp to end with (optional).
 	 * @return int Number of pages processed.
 	 */
-	function processRevisionsFromNamespaces( $ns, $arvstart = null, $arvend = null ) {
+	protected function processRevisionsFromNamespaces( $ns, $arvstart = null, $arvend = null ) {
 		$this->output( "Processing pages from namespace $ns...\n" );
 
 		$params = [
@@ -116,15 +219,16 @@ class GrabRevisions extends TextGrabber {
 			// Deal with misser mode
 			if ( $pages ) {
 				$misserModeCount = $resultsCount = 0;
-				foreach ( $pages as $page ) {
+				foreach ( $pages as $pageInfo ) {
 					$pageIdent = new PageIdentityValue(
-						$page['pageid'], $page['ns'], $page['title'], PageIdentityValue::LOCAL
+						$pageInfo['pageid'], $pageInfo['ns'], $pageInfo['title'], PageIdentityValue::LOCAL
 					);
-					foreach ( $page['revisions'] as $revision ) {
-						$this->processRevision( $revision, $page['pageid'], $pageIdent );
+					foreach ( $pageInfo['revisions'] as $revision ) {
+						$this->processRevision( $revision, $pageInfo['pageid'], $pageIdent );
 						$resultsCount++;
 						$lastTimestamp = $revision['timestamp'];
 					}
+					$this->insertOrUpdatePage( $pageInfo );
 				}
 				$nsRevisionCount += $resultsCount;
 				$this->output( "$resultsCount/$nsRevisionCount, arvstart: $lastTimestamp\n" );
@@ -150,5 +254,5 @@ class GrabRevisions extends TextGrabber {
 	}
 }
 
-$maintClass = 'GrabRevisions';
+$maintClass = GrabRevisions::class;
 require_once RUN_MAINTENANCE_IF_MAIN;

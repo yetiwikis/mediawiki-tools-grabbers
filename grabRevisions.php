@@ -6,6 +6,7 @@
 use MediaWiki\MediaWikiServices;
 use MediaWiki\Page\PageIdentity;
 use MediaWiki\Page\PageIdentityValue;
+use Wikimedia\Rdbms\SelectQueryBuilder;
 
 require_once 'includes/TextGrabber.php';
 
@@ -13,10 +14,11 @@ class GrabRevisions extends TextGrabber {
 
 	public function __construct() {
 		parent::__construct();
-		$this->mDescription = "Grab revisions from an external wiki and import it into one of ours.\n" .
-			"Don't use this on a large wiki unless you absolutely must; it will be incredibly slow.";
+		$this->addDescription( "Grab revisions from an external wiki and import it into one of ours.\n" .
+			"Don't use this on a large wiki unless you absolutely must; it will be incredibly slow." );
 		$this->addOption( 'arvstart', 'Timestamp at which to continue, useful to grab new revisions', false, true );
 		$this->addOption( 'arvend', 'Timestamp at which to end', false, true );
+		$this->addOption( 'new-revisions', 'Resume from the latest revision\'s timestamp.' );
 		$this->addOption( 'namespaces', 'Pipe-separated namespaces (ID) to grab. Defaults to all namespaces', false, true );
 	}
 
@@ -74,8 +76,17 @@ class GrabRevisions extends TextGrabber {
 
 		$arvstart = $this->getOption( 'arvstart' );
 		$arvend = $this->getOption( 'arvend' );
-		$pageCount = 0;
-		$pageCount += $this->processRevisionsFromNamespaces( implode( '|', $textNamespaces ), $arvstart, $arvend );
+		if ( $this->hasOption( 'new-revisions' ) ) {
+			$dbr = $this->getDB( DB_REPLICA );
+			$arvstart = $dbr->newSelectQueryBuilder()
+				->select( 'rev_timestamp' )
+				->from( 'revision' )
+				->orderBy( 'rev_timestamp', SelectQueryBuilder::SORT_DESC )
+				->caller( __METHOD__ )->fetchField();
+			$this->output( "Latest revision's timestamp: $arvstart\n" );
+		}
+
+		$pageCount = $this->processRevisionsFromNamespaces( implode( '|', $textNamespaces ), $arvstart - 1, $arvend );
 		$this->output( "\nDone - found $pageCount total pages.\n" );
 		# Done.
 	}

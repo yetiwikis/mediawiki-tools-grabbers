@@ -123,10 +123,11 @@ class GrabRevisions extends TextGrabber {
 	protected function insertOrUpdatePage( array $pageInfo ) {
 		$pageID = $pageInfo['pageid'];
 		$lastRevision = $pageInfo['revisions'][count( $pageInfo['revisions'] ) - 1];
+		$pageDBKey = $this->sanitiseTitle( $pageInfo['ns'], $pageInfo['title'] );
 		$page_e = [
 			'namespace' => $pageInfo['ns'],
 			# Trim and convert displayed title to database page title
-			'title' => $this->sanitiseTitle( $pageInfo['ns'], $pageInfo['title'] ),
+			'title' => $pageDBKey,
 			'is_redirect' => false,
 			'is_new' => false,
 			'random' => wfRandom(),
@@ -156,7 +157,7 @@ class GrabRevisions extends TextGrabber {
 
 		# Check if page is present
 		$pageIdent = new PageIdentityValue(
-			$pageInfo['pageid'], $pageInfo['ns'], $pageInfo['title'], PageIdentityValue::LOCAL
+			$pageInfo['pageid'], $pageInfo['ns'], $pageDBKey, PageIdentityValue::LOCAL
 		);
 		$pageLatest = $this->checkPage( $pageIdent );
 
@@ -231,8 +232,9 @@ class GrabRevisions extends TextGrabber {
 			if ( $pages ) {
 				$misserModeCount = $resultsCount = 0;
 				foreach ( $pages as $pageInfo ) {
-					$pageIdent = new PageIdentityValue(
-						$pageInfo['pageid'], $pageInfo['ns'], $pageInfo['title'], PageIdentityValue::LOCAL
+					$pageDBKey = $this->sanitiseTitle( $pageInfo['ns'], $pageInfo['title'] );
+					$pageIdent = PageIdentityValue::localIdentity(
+						$pageInfo['pageid'], $pageInfo['ns'], $pageDBKey
 					);
 					foreach ( $pageInfo['revisions'] as $revision ) {
 						$this->processRevision( $revision, $pageInfo['pageid'], $pageIdent );

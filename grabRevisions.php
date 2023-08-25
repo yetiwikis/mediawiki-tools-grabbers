@@ -68,8 +68,8 @@ class GrabRevisions extends TextGrabber {
 
 		if ( $grabFromAllNamespaces ) {
 			# Get list of live pages from namespaces and continue from there
-			$pageCount = $siteinfo['statistics']['edits'];
-			$this->output( "Generating revision list from all namespaces - $pageCount expected...\n" );
+			$revCount = $siteinfo['statistics']['edits'];
+			$this->output( "Generating revision list from all namespaces - $revCount expected...\n" );
 		} else {
 			$this->output( sprintf( "Generating revision list from %s namespaces...\n", count( $textNamespaces ) ) );
 		}
@@ -87,7 +87,7 @@ class GrabRevisions extends TextGrabber {
 		}
 
 		$pageCount = $this->processRevisionsFromNamespaces( implode( '|', $textNamespaces ), $arvstart - 1, $arvend );
-		$this->output( "\nDone - found $pageCount total pages.\n" );
+		$this->output( "\nDone - updated $pageCount total pages.\n" );
 		# Done.
 	}
 
@@ -221,7 +221,8 @@ class GrabRevisions extends TextGrabber {
 			$params['arvend'] = $arvend;
 		}
 
-		$nsRevisionCount = 0;
+		$pageMap = [];
+		$revisionCount = 0;
 		$misserModeCount = 0;
 		$lastTimestamp = '';
 		while ( true ) {
@@ -242,9 +243,10 @@ class GrabRevisions extends TextGrabber {
 						$lastTimestamp = $revision['timestamp'];
 					}
 					$this->insertOrUpdatePage( $pageInfo );
+					$pageMap[$pageInfo['pageid']] = true;
 				}
-				$nsRevisionCount += $resultsCount;
-				$this->output( "$resultsCount/$nsRevisionCount, arvstart: $lastTimestamp\n" );
+				$revisionCount += $resultsCount;
+				$this->output( "$resultsCount/$revisionCount, arvstart: $lastTimestamp\n" );
 			} else {
 				$misserModeCount++;
 				$this->output( "No result in this query due to misser mode.\n" );
@@ -261,9 +263,9 @@ class GrabRevisions extends TextGrabber {
 			$params = array_merge( $params, $result['continue'] );
 		}
 
-		$this->output( "$nsRevisionCount revisions found in namespace $ns.\n" );
+		$this->output( "$revisionCount revisions processed in namespace $ns.\n" );
 
-		return $nsRevisionCount;
+		return count( $pageMap );
 	}
 }
 

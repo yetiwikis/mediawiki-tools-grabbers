@@ -20,22 +20,6 @@ require_once 'includes/TextGrabber.php';
 class GrabDeletedText extends TextGrabber {
 
 	/**
-	 * Actual start point if bad drcontinues force having to continue from earlier
-	 * (mw1.19- issue)
-	 *
-	 * @var string
-	 */
-	protected $badStart;
-
-	/**
-	 * Last title to get; useful for working around content with a namespace/interwiki
-	 * on top of it in mw1.19-
-	 *
-	 * @var string
-	 */
-	protected $lastTitle;
-
-	/**
 	 * API limits to use instead of max
 	 *
 	 * @var int
@@ -54,18 +38,13 @@ class GrabDeletedText extends TextGrabber {
 		$this->mDescription = "Grab deleted text from an external wiki and import it into one of ours.";
 		# $this->addOption( 'start', 'Revision at which to start', false, true );
 		#$this->addOption( 'startdate', 'Not yet implemented.', false, true );
-		$this->addOption( 'drcontinue', 'API continue to restart deleted revision process', false, true );
+		$this->addOption( 'adrcontinue', 'API continue to restart deleted revision process', false, true );
 		$this->addOption( 'apilimits', 'API limits to use. Maximum limits for the user will be used by default', false, true );
-		$this->addOption( 'lasttitle', 'Last title to get; useful for working around content with a namespace/interwiki on top of it in mw1.19-', false, true );
-		$this->addOption( 'badstart', 'Actual start point if bad drcontinues force having to continue from earlier (mw1.19- issue)', false, true );
 		$this->addOption( 'namespaces', 'Pipe-separated namespaces (ID) to grab. Defaults to all namespaces', false, true );
 	}
 
 	public function execute() {
 		parent::execute();
-
-		$this->lastTitle = $this->getOption( 'lasttitle' );
-		$this->badStart = $this->getOption( 'badstart' );
 
 		# End date isn't necessarily supported by source wikis, but we'll deal with that later.
 		$this->endDate = $this->getOption( 'enddate' );
@@ -120,51 +99,42 @@ class GrabDeletedText extends TextGrabber {
 
 		foreach ( $textNamespaces as $ns ) {
 			$more = true;
-			$drcontinue = $this->getOption( 'drcontinue' );
-			if ( !$drcontinue ) {
-				$drcontinue = null;
+			$adrcontinue = $this->getOption( 'adrcontinue' );
+			if ( !$adrcontinue ) {
+				$adrcontinue = null;
 			} else {
 				# Parse start namespace from input string and use
 				# Length of namespace number
-				$nsStart = strpos( $drcontinue, '|' );
+				$nsStart = strpos( $adrcontinue, '|' );
 				# Namespsace number
 				if ( $nsStart == 0 ) {
 					$nsStart = 0;
 				} else {
-					$nsStart = substr( $drcontinue, 0, $nsStart );
+					$nsStart = substr( $adrcontinue, 0, $nsStart );
 				}
 				if ( $ns < $nsStart ) {
 					$this->output( "Skipping $ns\n" );
 					continue;
 				} elseif ( $nsStart != $ns ) {
-					$drcontinue = null;
+					$adrcontinue = null;
 				}
 			}
 			# Count revisions
 			$nsRevisions = 0;
 
-			# TODO: list=deletedrevs is deprecated in recent MediaWiki versions.
-			# should try to use list=alldeletedrevisions first and fallback to deletedrevs
 			$params = [
-				'list' => 'deletedrevs',
-				'drnamespace' => $ns,
-				'drlimit' => $this->getApiLimit(),
-				'drdir' => 'newer',
-				'drprop' => 'revid|parentid|user|userid|comment|minor|len|content|tags',
+				'list' => 'alldeletedrevisions',
+				'adrnamespace' => $ns,
+				'adrlimit' => $this->getApiLimit(),
+				'adrdir' => 'newer',
+				'adrprop' => 'ids|user|userid|comment|flags|len|content|tags|timestamp',
 			];
 
 			while ( $more ) {
-				if ( $drcontinue === null ) {
-					unset( $params['drcontinue'] );
+				if ( $adrcontinue === null ) {
+					unset( $params['adrcontinue'] );
 				} else {
-					# Check for 1.19 bug with the drcontinue that causes the query to jump backward on colonspaces, but we need something to compare back to for this...
-					if ( isset( $params['drcontinue'] ) ) {
-						$oldcontinue = $params['drcontinue'];
-						if ( substr( str_replace( ' ', '_', $drcontinue ), 0, -15 ) < substr( str_replace( ' ', '_', $oldcontinue ), 0, -15 ) ) {
-							$this->fatalError( 'Bad drcontinue; ' . str_replace( ' ', '_', $drcontinue ) . ' < ' . str_replace( ' ', '_', $oldcontinue ) );
-						}
-					}
-					$params['drcontinue'] = $drcontinue;
+					$params['adrcontinue'] = $adrcontinue;
 
 				}
 				$result = $this->bot->query( $params );
@@ -177,7 +147,7 @@ class GrabDeletedText extends TextGrabber {
 					continue;
 				}
 
-				$pageChunks = $result['query']['deletedrevs'];
+				$pageChunks = $result['query']['alldeletedrevisions'];
 				if ( empty( $pageChunks ) ) {
 					$this->output( "No revisions found.\n" );
 					$more = false;
@@ -187,19 +157,19 @@ class GrabDeletedText extends TextGrabber {
 					$nsRevisions = $this->processDeletedRevisions( $pageChunk, $nsRevisions );
 				}
 
-				if ( isset( $result['query-continue'] ) && isset( $result['query-continue']['deletedrevs'] ) ) {
+				if ( isset( $result['query-continue'] ) && isset( $result['query-continue']['alldeletedrevisions'] ) ) {
 					# Ancient way of api pagination
 					# TODO: Document what is this for. Examples welcome
-					$drcontinue = str_replace( '&', '%26', $result['query-continue']['deletedrevs']['drcontinue'] );
-					$params = array_merge( $params, $result['query-continue']['deletedrevs'] );
+					$adrcontinue = str_replace( '&', '%26', $result['query-continue']['alldeletedrevisions']['adrcontinue'] );
+					$params = array_merge( $params, $result['query-continue']['alldeletedrevisions'] );
 				} elseif ( isset( $result['continue'] ) ) {
 					# New pagination
-					$drcontinue = $result['continue']['drcontinue'];
+					$adrcontinue = $result['continue']['adrcontinue'];
 					$params = array_merge( $params, $result['continue'] );
 				} else {
 					$more = false;
 				}
-				$this->output( "drcontinue = $drcontinue\n" );
+				$this->output( "adrcontinue = $adrcontinue\n" );
 			}
 			$this->output( "$nsRevisions chunks of revisions processed in namespace $ns.\n" );
 			$revisions_processed += $nsRevisions;
@@ -220,23 +190,10 @@ class GrabDeletedText extends TextGrabber {
 	 * @returns int $nsRevisions updated
 	 */
 	function processDeletedRevisions( $pageChunk, $nsRevisions ) {
-		# Go back if we're not actually to the start point yet.
-		if ( $this->badStart ) {
-			if ( str_replace( ' ', '_', $badStart ) > str_replace( ' ', '_', $pageChunk['title'] ) ) {
-				return $nsRevisions;
-			} else {
-				# We're now at the correct position, clear the flag and continue
-				$this->badStart = null;
-			}
-		}
 
 		$ns = $pageChunk['ns'];
 		$title = $this->sanitiseTitle( $ns, $pageChunk['title'] );
 
-		# TODO: Document this whith examples if possible
-		if ( $this->lastTitle && ( str_replace( ' ', '_', $pageChunk['title'] ) > str_replace( ' ', '_', $this->lastTitle ) ) ) {
-			$this->fatalError( "Stopping at {$pageChunk['title']}; lasttitle reached." );
-		}
 		$this->output( "Processing {$pageChunk['title']}\n" );
 
 		$revisions = $pageChunk['revisions'];

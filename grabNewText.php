@@ -600,20 +600,18 @@ class GrabNewText extends TextGrabber {
 			return;
 		}
 
-		# TODO: list=deletedrevs is deprecated in recent MediaWiki versions.
-		# should try to use list=alldeletedrevisions first and fallback to deletedrevs
 		$params = [
-			'list' => 'deletedrevs',
+			'list' => 'alldeletedrevisions',
 			'titles' => (string)$pageTitle,
-			'drprop' => 'revid|parentid|user|userid|comment|minor|len|content|tags',
-			'drlimit' => 'max',
-			'drdir' => 'newer'
+			'adrprop' => 'ids|user|userid|comment|flags|len|content|tags|timestamp',
+			'adrlimit' => 'max',
+			'adrdir' => 'newer'
 		];
 
 		$result = $this->bot->query( $params );
 
 		if ( !$result || isset( $result['error'] ) ) {
-			if ( isset( $result['error'] ) && $result['error']['code'] == 'drpermissiondenied' ) {
+			if ( isset( $result['error'] ) && $result['error']['code'] == 'adrpermissiondenied' ) {
 				$this->output( "Warning: Current user can't see deleted revisions.\n" .
 					"Unable to see deleted revisions for title $pageTitle\n" );
 				$this->canSeeDeletedRevs = false;
@@ -623,12 +621,12 @@ class GrabNewText extends TextGrabber {
 			return;
 		}
 
-		if ( count( $result['query']['deletedrevs'] ) === 0 ) {
+		if ( count( $result['query']['alldeletedrevisions'] ) === 0 ) {
 			# No deleted revisions for that title, nothing to do
 			return;
 		}
 
-		$info_deleted = $result['query']['deletedrevs'][0];
+		$info_deleted = $result['query']['alldeletedrevisions'][0];
 
 		while ( true ) {
 			foreach ( $info_deleted['revisions'] as $revision ) {
@@ -652,8 +650,8 @@ class GrabNewText extends TextGrabber {
 			}
 
 			# Add continuation parameters
-			if ( isset( $result['query-continue'] ) && isset( $result['query-continue']['deletedrevs'] ) ) {
-				$params = array_merge( $params, $result['query-continue']['deletedrevs'] );
+			if ( isset( $result['query-continue'] ) && isset( $result['query-continue']['alldeletedrevisions'] ) ) {
+				$params = array_merge( $params, $result['query-continue']['alldeletedrevisions'] );
 			} elseif ( isset( $result['continue'] ) ) {
 				$params = array_merge( $params, $result['continue'] );
 			} else {
@@ -666,7 +664,7 @@ class GrabNewText extends TextGrabber {
 				return;
 			}
 
-			$info_deleted = $result['query']['deletedrevs'][0];
+			$info_deleted = $result['query']['alldeletedrevisions'][0];
 		}
 	}
 

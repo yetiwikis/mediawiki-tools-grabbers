@@ -142,7 +142,7 @@ abstract class ExternalWikiGrabber extends Maintenance {
 			return $this->actorStore->getUnknownActor();
 		}
 
-		$userIdentity = new UserIdentityValue( $id, $name );
+		$userIdentity = UserIdentityValue::newExternal( 'imported', $name );
 		$this->actorStore->acquireActorId( $userIdentity, $this->dbw );
 
 		return $userIdentity;
@@ -155,7 +155,7 @@ abstract class ExternalWikiGrabber extends Maintenance {
 	 * @param string $name User name or IP address
 	 */
 	function getActorFromUser( $id, $name ) {
-		return $this->actorStore->acquireActorId( new UserIdentityValue( $id, $name ), $this->dbw );
+		return $this->actorStore->acquireActorId( UserIdentityValue::newExternal( 'imported', $name ), $this->dbw );
 	}
 
 	/**

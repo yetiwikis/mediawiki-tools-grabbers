@@ -88,17 +88,17 @@ class GrabImages extends FileGrabber {
 
 		// We're getting only one file revision (the latest one)
 		foreach ( $entry['imageinfo'] as $fileVersion ) {
-			# Check for Wikia's videos
-			if ( $this->isWikiaVideo( $fileVersion ) ) {
-				$this->output( "...File {$name} appears to be a video, skipping it.\n" );
-				return 0;
-			}
-
 			if ( !isset( $fileVersion['url'] ) ) {
 				# If the file is supressed and we don't have permissions,
 				# we won't get URL nor MIME.
 				# Skip the file revision instead of crashing
 				$this->output( "...File {$name} supressed, skipping it\n" );
+				return 0;
+			}
+
+			# Check for Wikia's videos
+			if ( $this->isWikiaVideo( $fileVersion ) ) {
+				$this->output( "...File {$name} appears to be a video, skipping it.\n" );
 				return 0;
 			}
 

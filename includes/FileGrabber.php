@@ -129,7 +129,7 @@ abstract class FileGrabber extends ExternalWikiGrabber {
 			'img_minor_mime' => $file_e['minor_mime']
 		] + $commentFields;
 		$this->dbw->insert( 'image', $e, __METHOD__ );
-		$status = $this->storeFileFromURL( $name, $fileurl, false, $mime );
+		$status = $this->storeFileFromURL( $name, $fileurl, false, $mime, $file_e['sha1'] );
 		$this->output( "Done\n" );
 		return $status;
 	}
@@ -228,7 +228,7 @@ abstract class FileGrabber extends ExternalWikiGrabber {
 			'oi_minor_mime' => $file_e['minor_mime']
 		] + $commentFields;
 		$this->dbw->insert( 'oldimage', $e, __METHOD__ );
-		$status = $this->storeFileFromURL( $name, $fileurl, $file_e['timestamp'], $mime );
+		$status = $this->storeFileFromURL( $name, $fileurl, $file_e['timestamp'], $mime, $file_e['sha1'] );
 		$this->output( "Done\n" );
 		return $status;
 	}
@@ -239,10 +239,10 @@ abstract class FileGrabber extends ExternalWikiGrabber {
 	 * @param string $name Name of the file
 	 * @param string $fileurl URL of the file to be downloaded
 	 * @param int|boolean timestamp in case of old file or false otherwise
-	 * @param string $sha1 sha of the file to ensure that it's not corrupt (optional)
+	 * @param string $sha1 sha of the file to ensure that it's not corrupt
 	 * @return Status status of the operation
 	 */
-	function storeFileFromURL( $name, $fileurl, $timestamp, $mime, $sha1 = null ) {
+	function storeFileFromURL( $name, $fileurl, $timestamp, $mime, $sha1 ) {
 		$maxRetries = 3; # Just an arbitrary value
 		$status = Status::newFatal( 'UNKNOWN' );
 		$tmpPath = tempnam( wfTempDir(), 'grabfile' );
@@ -261,7 +261,7 @@ abstract class FileGrabber extends ExternalWikiGrabber {
 				# Also wait some time in case the server is temporarily unavailable
 				sleep( 20 * $retries );
 			}
-			$status = $this->downloadFile( $targeturl, $tmpPath, $mime, $sha1 );
+			$status = $this->downloadFile( $targeturl, $tmpPath, $mime );
 		}
 		if ( $status->isOK() ) {
 			$file = $this->localRepo->newFile( $name, $timestamp );

@@ -729,6 +729,7 @@ class GrabNewFiles extends FileGrabber {
 		if ( count( $idsToRestore ) > 0 ) {
 			$this->output( sprintf( 'Restoring filearchive IDs %s... ', implode( ',', $idsToRestore ) ) );
 			$this->dbw->begin();
+			$file = $this->localRepo->newFile( $name );
 			$file->restore( $idsToRestore, true );
 			$this->dbw->commit();
 			$this->output( "Done\n" );

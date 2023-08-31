@@ -341,7 +341,9 @@ class GrabNewFiles extends FileGrabber {
 			# NOTE: File::delete takes care to do the related changes
 			# in the database. For instance, move rows to filearchive
 			# Use the user that performed the move for the deletion
+			$this->dbw->begin();
 			$status = $file->delete( $reason, false, User::newFromId( $userId ) );
+			$this->dbw->commit();
 			if ( !$status->isOK() ) {
 				$this->fatalError( sprintf( "Failed to delete %s on move: %s",
 					$newName, implode( '. ', $status->getWikiText() ) ) );
@@ -358,7 +360,9 @@ class GrabNewFiles extends FileGrabber {
 		}
 		# NOTE: File::move() takes care to do the related changes in the
 		# database. For instance, rename the file in image and oldimage
+		$this->dbw->begin();
 		$status = $file->move( Title::makeTitle( NS_FILE, $newName ) );
+		$this->dbw->commit();
 		if ( !$status->isOK() ) {
 			$this->fatalError( sprintf( "Failed to move %s: %s",
 				$name, implode( '. ', $status->getWikiText() ) ) );
@@ -586,7 +590,9 @@ class GrabNewFiles extends FileGrabber {
 				if ( $moveOldImage ) {
 					$this->output( "File $name does not have uploads. Deleting our file... " );
 					$file = $this->localRepo->newFile( $name );
+					$this->dbw->begin();
 					$file->delete( $reason, false, $user );
+					$this->dbw->commit();
 					$this->output( "Done\n" );
 				} else {
 					$this->output( "File $name does not have uploads and doesn't exist in our wiki.\n" );
@@ -638,7 +644,9 @@ class GrabNewFiles extends FileGrabber {
 							# Delete it
 							$this->output( "Deleting old version with timestamp {$currentHistoryEntry['oi_timestamp']}..." );
 							$file = $this->localRepo->newFile( $name, $currentHistoryEntry['oi_timestamp'] );
+							$this->dbw->begin();
 							$file->deleteOld( $file->getArchiveName(), $reason, false, $user );
+							$this->dbw->commit();
 							$this->output( "Done\n" );
 							# Increase $count so we don't get stuck in an infinite loop on first oldimage version
 							$count++;
@@ -720,7 +728,9 @@ class GrabNewFiles extends FileGrabber {
 		}
 		if ( count( $idsToRestore ) > 0 ) {
 			$this->output( sprintf( 'Restoring filearchive IDs %s... ', implode( ',', $idsToRestore ) ) );
+			$this->dbw->begin();
 			$file->restore( $idsToRestore, true );
+			$this->dbw->commit();
 			$this->output( "Done\n" );
 		}
 	}

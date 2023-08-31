@@ -289,8 +289,8 @@ class GrabNewFiles extends FileGrabber {
 			__METHOD__
 		);
 		$file = $this->localRepo->newFile( $name );
-		$oldFile = $this->localRepo->newFile( $name, $oldTimestamp );
-		$status = $oldFile->publish( $file->getPath(), File::DELETE_SOURCE );
+		$oldPath = $this->localRepo->getZonePath( 'public' ) . "/archive/$oldArchiveName";
+		$status = $this->localRepo->publish( $file->getPath(), $oldPath, $oldPath, LocalRepo::DELETE_SOURCE );
 		if ( !$status->isOK() ) {
 			$this->output( sprintf( "Error moving current file %s to archive: %s\n",
 				$name, $status->getWikiText() ) );

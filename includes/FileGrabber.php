@@ -228,7 +228,7 @@ abstract class FileGrabber extends ExternalWikiGrabber {
 			'oi_minor_mime' => $file_e['minor_mime']
 		] + $commentFields;
 		$this->dbw->insert( 'oldimage', $e, __METHOD__ );
-		$status = $this->storeFileFromURL( $name, $fileurl, $file_e['timestamp'], $mime, $file_e['sha1'] );
+		$status = $this->storeFileFromURL( $name, $fileurl, $file_e['timestamp'], $mime, $file_e['sha1'], $fileVersion['archivename'] );
 		$this->output( "Done\n" );
 		return $status;
 	}
@@ -242,7 +242,24 @@ abstract class FileGrabber extends ExternalWikiGrabber {
 	 * @param string $sha1 sha of the file to ensure that it's not corrupt
 	 * @return Status status of the operation
 	 */
-	function storeFileFromURL( $name, $fileurl, $timestamp, $mime, $sha1 ) {
+	function storeFileFromURL( $name, $fileurl, $timestamp, $mime, $sha1, $archiveName = null ) {
+		// Check for existing file in repo. Can't use LocalFile/OldLocalFile as that uses the DB.
+		if ( $archiveName ) {
+			$path = $this->localRepo->getZonePath( 'public' ) . "/archive/$archiveName";
+		} else {
+			$path = $this->localRepo->getZonePath( 'public' ) . "/$name";
+		}
+		if ( $this->localRepo->fileExists( $path ) ) {
+			$eSha = $this->localRepo->getBackend()->getFileStat( [ 'src' => $path, 'latest' => 1, 'requireSHA1' => 1 ] )['sha1'];
+			if ( $eSha === $sha1 ) {
+				return Status::newGood();
+			} else {
+				$this->output( sprintf( " File %s doesn't match expected sha1. '%s' '%s'\n", $name, $eSha, $sha1 ) );
+			}
+		} else {
+			$this->output( sprintf( " File %s doesn't exist in the local file repo.\n", $name ) );
+		}
+
 		$maxRetries = 3; # Just an arbitrary value
 		$status = Status::newFatal( 'UNKNOWN' );
 		$tmpPath = tempnam( wfTempDir(), 'grabfile' );

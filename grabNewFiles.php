@@ -342,7 +342,7 @@ class GrabNewFiles extends FileGrabber {
 			# in the database. For instance, move rows to filearchive
 			# Use the user that performed the move for the deletion
 			$this->dbw->begin();
-			$status = $file->delete( $reason, false, User::newFromId( $userId ) );
+			$status = $file->deleteFile( $reason, User::newFromId( $userId ) );
 			$this->dbw->commit();
 			if ( !$status->isOK() ) {
 				$this->fatalError( sprintf( "Failed to delete %s on move: %s",
@@ -591,7 +591,7 @@ class GrabNewFiles extends FileGrabber {
 					$this->output( "File $name does not have uploads. Deleting our file... " );
 					$file = $this->localRepo->newFile( $name );
 					$this->dbw->begin();
-					$file->delete( $reason, false, $user );
+					$file->deleteFile( $reason, $user );
 					$this->dbw->commit();
 					$this->output( "Done\n" );
 				} else {
@@ -645,7 +645,7 @@ class GrabNewFiles extends FileGrabber {
 							$this->output( "Deleting old version with timestamp {$currentHistoryEntry['oi_timestamp']}..." );
 							$file = $this->localRepo->newFile( $name, $currentHistoryEntry['oi_timestamp'] );
 							$this->dbw->begin();
-							$file->deleteOld( $file->getArchiveName(), $reason, false, $user );
+							$file->deleteOldFile( $file->getArchiveName(), $reason, $user );
 							$this->dbw->commit();
 							$this->output( "Done\n" );
 							# Increase $count so we don't get stuck in an infinite loop on first oldimage version

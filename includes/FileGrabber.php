@@ -77,7 +77,7 @@ abstract class FileGrabber extends ExternalWikiGrabber {
 			$status = Status::newFatal( 'SKIPPED' ); # Not an existing message but whatever
 			return $status;
 		}
-		$fileurl = $this->sanitiseUrl( $fileVersion['url'] );
+		$fileurl = $this->sanitiseUrl( $fileVersion['url'], $fileVersion['mime'] );
 
 		$comment = $fileVersion['comment'];
 		if ( !$comment ) {
@@ -129,7 +129,7 @@ abstract class FileGrabber extends ExternalWikiGrabber {
 			'img_minor_mime' => $file_e['minor_mime']
 		] + $commentFields;
 		$this->dbw->insert( 'image', $e, __METHOD__ );
-		$status = $this->storeFileFromURL( $name, $fileurl, false );
+		$status = $this->storeFileFromURL( $name, $fileurl, false, $mime );
 		$this->output( "Done\n" );
 		return $status;
 	}
@@ -181,7 +181,7 @@ abstract class FileGrabber extends ExternalWikiGrabber {
 			$filedeleted = $filedeleted | File::DELETED_RESTRICTED;
 		}
 
-		$fileurl = $this->sanitiseUrl( $fileVersion['url'] );
+		$fileurl = $this->sanitiseUrl( $fileVersion['url'], $fileVersion['mime'] );
 
 		$file_e = [
 			'name' => $name,
@@ -228,7 +228,7 @@ abstract class FileGrabber extends ExternalWikiGrabber {
 			'oi_minor_mime' => $file_e['minor_mime']
 		] + $commentFields;
 		$this->dbw->insert( 'oldimage', $e, __METHOD__ );
-		$status = $this->storeFileFromURL( $name, $fileurl, $file_e['timestamp'] );
+		$status = $this->storeFileFromURL( $name, $fileurl, $file_e['timestamp'], $mime );
 		$this->output( "Done\n" );
 		return $status;
 	}
@@ -242,7 +242,7 @@ abstract class FileGrabber extends ExternalWikiGrabber {
 	 * @param string $sha1 sha of the file to ensure that it's not corrupt (optional)
 	 * @return Status status of the operation
 	 */
-	function storeFileFromURL( $name, $fileurl, $timestamp, $sha1 = null ) {
+	function storeFileFromURL( $name, $fileurl, $timestamp, $mime, $sha1 = null ) {
 		$maxRetries = 3; # Just an arbitrary value
 		$status = Status::newFatal( 'UNKNOWN' );
 		$tmpPath = tempnam( wfTempDir(), 'grabfile' );
@@ -261,7 +261,7 @@ abstract class FileGrabber extends ExternalWikiGrabber {
 				# Also wait some time in case the server is temporarily unavailable
 				sleep( 20 * $retries );
 			}
-			$status = $this->downloadFile( $targeturl, $tmpPath, $sha1 );
+			$status = $this->downloadFile( $targeturl, $tmpPath, $mime, $sha1 );
 		}
 		if ( $status->isOK() ) {
 			$file = $this->localRepo->newFile( $name, $timestamp );
@@ -285,7 +285,7 @@ abstract class FileGrabber extends ExternalWikiGrabber {
 	 * @param string $sha1 sha of the file to ensure that it's not corrupt (optional)
 	 * @return Status status of the operation
 	 */
-	function downloadFile( $fileurl, $targetTempFile, $sha1 = null ) {
+	function downloadFile( $fileurl, $targetTempFile, $mime, $sha1 = null ) {
 		$this->mTmpHandle = fopen( $targetTempFile, 'wb' );
 		if (!$this->mTmpHandle) {
 			$status = Status::newFatal( 'CANTCREATEFILE' ); # Not an existing message but whatever
@@ -293,6 +293,9 @@ abstract class FileGrabber extends ExternalWikiGrabber {
 		}
 		$req = MediaWikiServices::getInstance()->getHttpRequestFactory()
 			->create( $fileurl, [ 'timeout' => 90 ], __METHOD__ );
+		if ( $mime == 'image/webp') {
+			$req->setHeader( 'Accept', 'image/webp' );
+		}
 		$req->setCallback( [ $this, 'saveTempFileChunk' ] );
 		$status = $req->execute();
 		fclose( $this->mTmpHandle );
@@ -389,8 +392,9 @@ abstract class FileGrabber extends ExternalWikiGrabber {
 	 * @param $fileurl string URL of the file
 	 * @returns string sanitised URL
 	 */
-	function sanitiseUrl( $fileurl ) {
-		if ( $this->isWikia ) {
+	function sanitiseUrl( $fileurl, $mime ) {
+		// Fandom handles webp backwards, only serving the original if the original isn't requested.
+		if ( $this->isWikia && $mime != 'image/webp' ) {
 			# Wikia is now serving "optimised" lossy images instead of the originals
 			# See http://community.wikia.com/wiki/Thread:1200407
 			# Add format=original to the URL to hopefully force it to download the original

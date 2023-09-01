@@ -254,7 +254,8 @@ abstract class FileGrabber extends ExternalWikiGrabber {
 			if ( $eSha === $sha1 ) {
 				return Status::newGood();
 			} else {
-				$this->output( sprintf( " File %s doesn't match expected sha1. '%s' '%s'\n", $name, $eSha, $sha1 ) );
+				$this->output( sprintf( " File %s doesn't match expected sha1.\n", $name ) );
+				$this->localRepo->quickPurge( $path );
 			}
 		} else {
 			$this->output( sprintf( " File %s doesn't exist in the local file repo.\n", $name ) );

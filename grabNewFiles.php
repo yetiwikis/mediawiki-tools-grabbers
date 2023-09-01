@@ -76,7 +76,7 @@ class GrabNewFiles extends FileGrabber {
 
 		$params = [
 			'list' => 'logevents',
-			'leprop' => 'ids|title|type|timestamp|details|comment|userid',
+			'leprop' => 'ids|title|type|timestamp|details|comment|user|userid',
 			'leend' => (string)$this->endDate,
 			'ledir' => 'newer',
 			'lestart' => (string)$this->startDate,
@@ -116,7 +116,8 @@ class GrabNewFiles extends FileGrabber {
 						} else {
 							$newTitle = $logEntry['params']['target_title'];
 						}
-						$this->processMove( $title, $newTitle, (int)$logEntry['userid'] );
+						$user = $this->getUserIdentity( (int)$logEntry['userid'], $logEntry['user'] );
+						$this->processMove( $title, $newTitle, $user );
 					}
 				}
 			}
@@ -308,10 +309,10 @@ class GrabNewFiles extends FileGrabber {
 	 *
 	 * @param $title string Old title of the file
 	 * @param $newTitle string New title of the file
-	 * @param $userId int User id which performed the move, used only when
+	 * @param $user User user which performed the move, used only when
 	 *          the target title needs to be deleted
 	 */
-	function processMove( $title, $newTitle, $userId ) {
+	function processMove( $title, $newTitle, $user ) {
 		$this->output( "Processing move of $title to $newTitle... " );
 		# If the target page existed, it was deleted
 		# If we have the new title queued, remove it
@@ -342,7 +343,7 @@ class GrabNewFiles extends FileGrabber {
 			# in the database. For instance, move rows to filearchive
 			# Use the user that performed the move for the deletion
 			$this->dbw->begin();
-			$status = $file->deleteFile( $reason, User::newFromId( $userId ) );
+			$status = $file->deleteFile( $reason, $user );
 			$this->dbw->commit();
 			if ( !$status->isOK() ) {
 				$this->fatalError( sprintf( "Failed to delete %s on move: %s",
@@ -388,7 +389,7 @@ class GrabNewFiles extends FileGrabber {
 			# Update deletion reason and user, in case we had a restore action
 			$this->pendingDeletions[$title] = [
 				'reason' => $logEntry['comment'],
-				'user' => User::newFromId( (int)$logEntry['userid'] )
+				'user' => $this->getUserIdentity( (int)$logEntry['userid'], $logEntry['user'] )
 			];
 		} elseif ( !array_key_exists( $title, $this->pendingDeletions ) ) {
 			# Check to avoid overwritting the deletion reason or user on restore,

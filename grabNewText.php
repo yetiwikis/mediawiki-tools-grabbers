@@ -603,7 +603,8 @@ class GrabNewText extends TextGrabber {
 			'titles' => (string)$pageTitle,
 			'drvprop' => 'ids|user|userid|comment|flags|content|tags|timestamp',
 			'drvlimit' => 'max',
-			'drvdir' => 'newer'
+			'drvdir' => 'newer',
+			'formatversion' => 2
 		];
 
 		$result = $this->bot->query( $params );
@@ -619,15 +620,15 @@ class GrabNewText extends TextGrabber {
 			return;
 		}
 
-		if ( count( $result['query']['deletedrevisions'] ) === 0 ) {
+		if ( !isset( $result['query']['pages'][0]['deletedrevisions'] ) ) {
 			# No deleted revisions for that title, nothing to do
 			return;
 		}
 
-		$info_deleted = $result['query']['deletedrevisions'][0];
+		$info_deleted = $result['query']['pages'][0]['deletedrevisions'];
 
 		while ( true ) {
-			foreach ( $info_deleted['revisions'] as $revision ) {
+			foreach ( $info_deleted as $revision ) {
 				$revisionId = $revision['revid'];
 				if ( !$revisionId ) {
 					# Revision ID is mandatory with the new content tables and things will fail if not provided.
@@ -662,7 +663,7 @@ class GrabNewText extends TextGrabber {
 				return;
 			}
 
-			$info_deleted = $result['query']['deletedrevisions'][0];
+			$info_deleted = $result['query']['pages'][0]['deletedrevisions'];
 		}
 	}
 

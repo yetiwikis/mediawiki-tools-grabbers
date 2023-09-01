@@ -10,9 +10,9 @@
  * @note Based on code by Jack Phoenix and Edward Chernenko.
  */
 
- require_once 'includes/ExternalWikiGrabber.php';
+ require_once 'includes/FileGrabber.php';
 
-class GrabDeletedFiles extends ExternalWikiGrabber {
+class GrabDeletedFiles extends FileGrabber {
 
 	public function __construct() {
 		parent::__construct();
@@ -28,7 +28,6 @@ class GrabDeletedFiles extends ExternalWikiGrabber {
 
 	public function execute() {
 		parent::execute();
-		global $wgUploadDirectory;
 
 		$imagesurl = $this->getOption( 'imagesurl' );
 		$scrape = $this->hasOption( 'scrape' );
@@ -110,11 +109,15 @@ class GrabDeletedFiles extends ExternalWikiGrabber {
 			}
 
 			$file = $row->fa_storage_key;
-			$fileLocalPath = $wgUploadDirectory . '/deleted/' . $file[0] . '/' . $file[1] . '/' . $file[2];
+			$path = $this->localRepo->getZonePath( 'deleted' ) . "/$file";
 
 			$this->output( "Processing $fileName" );
 
-			if ( !$scrape ) {
+			if ( $this->localRepo->fileExists( $path ) ) {
+				// Skip re-downloading.
+				$this->output("\n");
+				continue;
+			} elseif ( !$scrape ) {
 				# $imagesurl should be something like http://images.wikia.com/uncyclopedia/images
 				# Example image: http://images.wikia.com/uncyclopedia/images/deleted/a/b/c/abcblahhash.png
 				$fileurl = $imagesurl . '/deleted/' . $file[0] . '/' . $file[1] . '/' . $file[2] . '/' . $file;
@@ -135,12 +138,11 @@ class GrabDeletedFiles extends ExternalWikiGrabber {
 				}
 			}
 
-			# Directory structure and save
-			if ( !file_exists( $fileLocalPath ) ) {
-				mkdir( $fileLocalPath, 0777, true );
-				touch( $fileLocalPath . "/index.html" );
-			}
-			file_put_contents( $fileLocalPath . '/' . $file, $fileContent );
+			$tmpPath = tempnam( wfTempDir(), 'grabfile' );
+			file_put_contents( $tmpPath, $fileContent );
+			$this->localRepo->quickImport( $tmpPath, $path );
+			unlink( $tmpPath );
+
 			$this->output( ": successfully saved as $file\n" );
 			if ( ( $count % 500 ) == 0 && $count !== 0 ) {
 				$this->output( "$count\n" );

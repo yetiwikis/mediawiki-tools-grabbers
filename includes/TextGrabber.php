@@ -164,6 +164,35 @@ abstract class TextGrabber extends ExternalWikiGrabber {
 		if ( isset( $revision['parentid'] ) ) {
 			$rev->setParentId( $revision['parentid'] );
 		}
+
+		$arRow = $this->dbw->selectRow(
+			'archive',
+			'*',
+			[ 'ar_rev_id' => $revid ],
+			__METHOD__
+		);
+		$actorNormalization = MediaWikiServices::getInstance()->getActorNormalization();
+		if ( $arRow &&
+			$arRow->ar_timestamp === $rev->getTimestamp() &&
+			$arRow->ar_sha1 === $rev->getSha1() &&
+			(int)$arRow->ar_actor === $actorNormalization->findActorId( $rev->getUser(), $this->dbw )
+		) {
+			# Already in database
+			$this->output( "Archived revision $revid is already in the database, deleting it.\n" );
+			$this->dbw->delete(
+				'slots',
+				[ 'slot_revision_id' => $revid ],
+				__METHOD__
+			);
+			$this->dbw->delete(
+				'archive',
+				[ 'ar_rev_id' => $revid ],
+				__METHOD__
+			);
+		} elseif ( $arRow ) {
+			$this->output( sprintf( "Archived: %s, %s, %s\n", $arRow->ar_timestamp, $arRow->ar_sha1, $arRow->ar_actor ) );
+			$this->output( sprintf( "New: %s, %s, %s\n", $rev->getTimestamp(), $rev->getSha1(), $actorNormalization->findActorId( $rev->getUser(), $this->dbw ) ) );
+		}
 		$this->revisionStore->insertRevisionOn( $rev, $this->dbw );
 
 		# Insert tags, if any
@@ -441,7 +470,10 @@ abstract class TextGrabber extends ExternalWikiGrabber {
 				$this->commentStore->insert( $this->dbw, 'ar_comment', $comment )
 			);
 
-			$this->dbw->insert( 'archive', $insertFields, __METHOD__ );
+			$this->dbw->insert( 'archive', $insertFields, __METHOD__, [ 'IGNORE' ] );
+			if ( $this->dbw->affectedRows() === 0 ) {
+				$this->output( "Revision {$insertFields['ar_rev_id']} already exists in archive table; skipping\n" );
+			}
 			$revids[] = $row->rev_id;
 		}
 

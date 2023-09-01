@@ -601,7 +601,7 @@ class GrabNewText extends TextGrabber {
 		$params = [
 			'list' => 'alldeletedrevisions',
 			'titles' => (string)$pageTitle,
-			'adrprop' => 'ids|user|userid|comment|flags|len|content|tags|timestamp',
+			'adrprop' => 'ids|user|userid|comment|flags|content|tags|timestamp',
 			'adrlimit' => 'max',
 			'adrdir' => 'newer'
 		];

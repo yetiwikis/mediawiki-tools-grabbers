@@ -127,7 +127,7 @@ class GrabDeletedText extends TextGrabber {
 				'adrnamespace' => $ns,
 				'adrlimit' => $this->getApiLimit(),
 				'adrdir' => 'newer',
-				'adrprop' => 'ids|user|userid|comment|flags|len|content|tags|timestamp',
+				'adrprop' => 'ids|user|userid|comment|flags|content|tags|timestamp',
 			];
 
 			while ( $more ) {

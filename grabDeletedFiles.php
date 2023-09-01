@@ -163,18 +163,10 @@ class GrabDeletedFiles extends ExternalWikiGrabber {
 			);
 
 			if ( !$numMatches ) {
-				# First make sure we're still logged in, as this is usually why this fails...
-				if ( $this->assertLogin() ) {
-					# START OVER, WE AREN'T
-					return $this->scrapeFileContent( $undeletePage, $fileName, $file, $serverURL );
-				} else {
-					# Okay, nevermind, was probably something broken or a video or something else we didn't expect
+				$this->output( "\nScraping: No target revisions for $fileName found.\n" );
+				file_put_contents( $wgUploadDirectory . '/lastfailedundeletepage.html', $specialUndeletePage[1] );
 
-					$this->output( "\nScraping: No target revisions for $fileName found.\n" );
-					file_put_contents( $wgUploadDirectory . '/lastfailedundeletepage.html', $specialUndeletePage[1] );
-
-					return false;
-				}
+				return false;
 			} else {
 				$fileContent = [ false, "$file: revision not found" ];
 
@@ -202,12 +194,6 @@ class GrabDeletedFiles extends ExternalWikiGrabber {
 
 					$fileContent = $this->bot->curl_get( $downloadTarget );
 
-					# Make sure we didn't just get logged out AGAIN
-					if ( $fileContent[0] && substr( $fileContent[1], 0, 4 ) == '<!do' && $this->assertLogin() ) {
-						# START OVER, WE DID
-						return $this->scrapeFileContent( $undeletePage, $fileName, $file, $serverURL );
-					}
-
 					# if ( !$fileContent[0] ) {
 					# 	$this->output( "$fileContent[1] for $downloadTarget\n" );
 					# }
@@ -230,32 +216,6 @@ class GrabDeletedFiles extends ExternalWikiGrabber {
 		}
 
 		return $fileContent;
-	}
-
-	# Dumb scrape thing
-	# return true if this was actually needed, maybe RENAME THIS TO SOMETHING THAT MAKES SENSE?!
-	function assertLogin() {
-		if ( $this->bot->query( [ 'meta' => 'userinfo' ] )['query']['userinfo']['id'] == 0 ) {
-			# Yup, we've been logged out!
-			# But let's not hammer this thing too much?
-			while ( ( time() - $this->lastLogin ) < 30 ) {
-				sleep( 30 );
-			}
-			# Okay, resume this madness!
-			$data = $this->bot->login();
-			if ( $data ) {
-				# ...or not.
-				$this->fatalError( var_dump( $data ) );
-			}
-
-			$this->output( "\nLogged in as {$this->user}...\n" );
-			$this->lastLogin = time();
-
-			return true;
-		} else {
-			# YAY?
-			return false;
-		}
 	}
 
 	function processFile( $entry ) {

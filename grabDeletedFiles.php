@@ -158,7 +158,7 @@ class GrabDeletedFiles extends ExternalWikiGrabber {
 
 		if ( $specialUndeletePage[0] ) {
 			$numMatches = preg_match_all(
-				'/\<li\>\<input name="fileid\d+" type="checkbox" value="1" ?\/?> .* <a href="(.*target=.*file=.*token=[a-zA-Z0-9%]*)" title=".*<\/li>/',
+				'/<a href="(.*target=.*file=.*token=[a-zA-Z0-9%]*)"/',
 				$specialUndeletePage[1], $matches, PREG_SET_ORDER
 			);
 

@@ -221,20 +221,31 @@ class GrabDeletedFiles extends ExternalWikiGrabber {
 	function processFile( $entry ) {
 		global $wgDBname;
 
+		$comment = $entry['description'];
+		if ( !$comment ) {
+			$comment = '';
+		}
+
+		if ( $entry['user'] ) {
+			$actor = $this->getActorFromUser( (int)$entry['userid'], $entry['user'] );
+		} else {
+			$actor = 0;
+		}
+
+		$commentFields = $this->commentStore->insert( $this->dbw, 'fa_description', $comment );
+
 		$e = [
 			'fa_name' => $entry['name'],
 			'fa_size' => $entry['size'],
 			'fa_width' => $entry['width'],
 			'fa_height' => $entry['height'],
 			'fa_bits' => $entry['bitdepth'],
-			'fa_description' => $entry['description'],
-			'fa_user' => $entry['userid'],
-			'fa_user_text' => $entry['user'],
+			'fa_actor' => $actor,
 			'fa_timestamp' => wfTimestamp( TS_MW, $entry['timestamp'] ),
 			'fa_storage_group' => 'deleted',
 			'fa_media_type' => null,
 			'fa_deleted' => 0
-		];
+		] + $commentFields;
 
 		$mime = $entry['mime'];
 		$mimeBreak = strpos( $mime, '/' );
@@ -258,7 +269,7 @@ class GrabDeletedFiles extends ExternalWikiGrabber {
 		# We could get these other fields from logging, but they appear to have no purpose so SCREW IT.
 		$e['fa_deleted_user'] = 0;
 		$e['fa_deleted_timestamp'] = null;
-		$e['fa_deleted_reason'] = null;
+		$e['fa_deleted_reason_id'] = 0;
 		$e['fa_archive_name'] = null; # UN:N; MediaWiki figures it out anyway.
 
 		$dbw = wfGetDB( DB_MASTER, [], $this->getOption( 'db', $wgDBname ) );

@@ -93,10 +93,12 @@ class GrabFiles extends FileGrabber {
 		# Check if file already exists.
 		# NOTE: wfFindFile() checks foreign repos too. Use local repo only
 		# newFile skips supression checks
+		/* This is being ran on an empty database, so everything should be processed.
 		$file = $this->localRepo->newFile( $name );
 		if ( $file->exists() ) {
 			return 0;
 		}
+		*/
 
 		$this->output( "Processing {$name}: " );
 		$count = 0;

@@ -599,17 +599,17 @@ class GrabNewText extends TextGrabber {
 		}
 
 		$params = [
-			'list' => 'alldeletedrevisions',
+			'prop' => 'deletedrevisions',
 			'titles' => (string)$pageTitle,
-			'adrprop' => 'ids|user|userid|comment|flags|content|tags|timestamp',
-			'adrlimit' => 'max',
-			'adrdir' => 'newer'
+			'drvprop' => 'ids|user|userid|comment|flags|content|tags|timestamp',
+			'drvlimit' => 'max',
+			'drvdir' => 'newer'
 		];
 
 		$result = $this->bot->query( $params );
 
 		if ( !$result || isset( $result['error'] ) ) {
-			if ( isset( $result['error'] ) && $result['error']['code'] == 'adrpermissiondenied' ) {
+			if ( isset( $result['error'] ) && $result['error']['code'] == 'drvpermissiondenied' ) {
 				$this->output( "Warning: Current user can't see deleted revisions.\n" .
 					"Unable to see deleted revisions for title $pageTitle\n" );
 				$this->canSeeDeletedRevs = false;
@@ -619,12 +619,12 @@ class GrabNewText extends TextGrabber {
 			return;
 		}
 
-		if ( count( $result['query']['alldeletedrevisions'] ) === 0 ) {
+		if ( count( $result['query']['deletedrevisions'] ) === 0 ) {
 			# No deleted revisions for that title, nothing to do
 			return;
 		}
 
-		$info_deleted = $result['query']['alldeletedrevisions'][0];
+		$info_deleted = $result['query']['deletedrevisions'][0];
 
 		while ( true ) {
 			foreach ( $info_deleted['revisions'] as $revision ) {
@@ -648,8 +648,8 @@ class GrabNewText extends TextGrabber {
 			}
 
 			# Add continuation parameters
-			if ( isset( $result['query-continue'] ) && isset( $result['query-continue']['alldeletedrevisions'] ) ) {
-				$params = array_merge( $params, $result['query-continue']['alldeletedrevisions'] );
+			if ( isset( $result['query-continue'] ) && isset( $result['query-continue']['deletedrevisions'] ) ) {
+				$params = array_merge( $params, $result['query-continue']['deletedrevisions'] );
 			} elseif ( isset( $result['continue'] ) ) {
 				$params = array_merge( $params, $result['continue'] );
 			} else {
@@ -662,7 +662,7 @@ class GrabNewText extends TextGrabber {
 				return;
 			}
 
-			$info_deleted = $result['query']['alldeletedrevisions'][0];
+			$info_deleted = $result['query']['deletedrevisions'][0];
 		}
 	}
 

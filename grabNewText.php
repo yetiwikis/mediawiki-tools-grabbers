@@ -484,12 +484,12 @@ class GrabNewText extends TextGrabber {
 		$revisionsProcessed = false;
 		while ( true ) {
 			foreach ( $info_pages[0]['revisions'] as $revision ) {
-				if ( !$skipPrevious || $revision['revid'] > $this->lastRevision) {
+				//if ( !$skipPrevious || $revision['revid'] > $this->lastRevision) {
 					$revisionsProcessed = $this->processRevision( $revision, $pageID, $title ) || $revisionsProcessed;
-				} else {
-					$this->output( sprintf( "Skipping the processRevision of revision %d minor or equal to the last revision of the database (%d).\n",
-						$revision['revid'], $this->lastRevision ) );
-				}
+				// } else {
+				// 	$this->output( sprintf( "Skipping the processRevision of revision %d minor or equal to the last revision of the database (%d).\n",
+				// 		$revision['revid'], $this->lastRevision ) );
+				// }
 			}
 
 			# Add continuation parameters

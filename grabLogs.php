@@ -34,6 +34,7 @@ class GrabLogs extends ExternalWikiGrabber {
 		$this->addOption( 'start', 'Start point (20121222142317, 2012-12-22T14:23:17Z, etc)', false, true );
 		$this->addOption( 'end', 'Log time at which to stop (20121222142317, 2012-12-22T14:23:17Z, etc)', false, true );
 		$this->addOption( 'logtypes', 'Process only logs of those types (pipe separated list). All logs will be processed by default', false, true );
+		$this->addOption( 'resume', 'Set the `start` param from the last log entry grabbed.' );
 	}
 
 	public function execute() {
@@ -50,8 +51,26 @@ class GrabLogs extends ExternalWikiGrabber {
 			'ledir' => 'newer',
 			'leprop' => 'ids|title|type|user|userid|timestamp|comment|details|tags',
 		];
+		if ( $this->validLogTypes && count( $this->validLogTypes ) === 1 ) {
+			$params['letype'] = $validLogTypes;
+		}
 
-		$lestart = $this->getOption( 'start' );
+		if ( $this->hasOption( 'resume' ) ) {
+			$lestart = $this->dbw->newSelectQueryBuilder()
+				->select( 'log_timestamp' )
+				->from( 'logging' )
+				->orderBy( 'log_timestamp DESC' )
+				->caller( __METHOD__ )->fetchField();
+			if ( $lestart ) {
+				// Better to be safe than sorry
+				$lestart -= 1;
+				$this->output( "Resume from start = $lestart\n" );
+			} else {
+				$this->output( "No log entries in the database, start from scratch.\n" );
+			}
+		} else {
+			$lestart = $this->getOption( 'start' );
+		}
 		if ( $lestart ) {
 			$lestart = wfTimestamp( TS_ISO_8601, $lestart );
 			if ( !$lestart ) {
@@ -191,14 +210,12 @@ class GrabLogs extends ExternalWikiGrabber {
 		# Bits of code picked from ManualLogEntry::insert()
 		$e += $this->commentStore->insert( $this->dbw, 'log_comment', $entry['comment'] );
 
-		$this->dbw->insert( 'logging', $e, __METHOD__ );
+		$this->dbw->insert( 'logging', $e, __METHOD__, [ 'IGNORE' ] );
 
 		# Insert tags, if any
-		if ( isset( $entry['tags'] ) && count( $entry['tags'] ) > 0 ) {
+		if ( isset( $entry['tags'] ) && count( $entry['tags'] ) > 0 && $this->dbw->affectedRows() ) {
 			$this->insertTags( $entry['tags'], null, $entry['logid']);
 		}
-
-		$this->dbw->commit();
 	}
 
 	/**

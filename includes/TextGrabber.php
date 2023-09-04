@@ -208,10 +208,10 @@ abstract class TextGrabber extends ExternalWikiGrabber {
 	 *
 	 * @param array $revision Array retrieved from the API, containing the revision
 	 *     text, ID, timestamp, whether it was a minor edit or not and much more
-	 * @param Title $title Title object of this page
+	 * @param PageIdentity $page Title object of this page
 	 * @return bool Whether revision has been inserted or not
 	 */
-	function insertArchivedRevision( $revision, $title ) {
+	function insertArchivedRevision( $revision, $page ) {
 		$revisionId = $revision['revid'];
 		$timestamp = wfTimestamp( TS_MW, $revision['timestamp'] );
 		$parentID = null;
@@ -245,6 +245,9 @@ abstract class TextGrabber extends ExternalWikiGrabber {
 		if ( isset( $revision['*'] ) ) {
 			$text = $revision['*'];
 		}
+		if ( isset( $revision['content'] ) ) {
+			$text = $revision['content'];
+		}
 		if ( isset ( $revision['suppressed'] ) ) {
 			$revdeleted = $revdeleted | RevisionRecord::DELETED_RESTRICTED;
 		}
@@ -254,8 +257,8 @@ abstract class TextGrabber extends ExternalWikiGrabber {
 		$commentFields = $this->commentStore->insert( $this->dbw, 'ar_comment', $comment );
 
 		$e = [
-			'ar_namespace' => $title->getNamespace(),
-			'ar_title' => $title->getDBkey(),
+			'ar_namespace' => $page->getNamespace(),
+			'ar_title' => $page->getDBkey(),
 			'ar_actor' => $actor,
 			'ar_timestamp' => $timestamp,
 			'ar_minor_edit' => ( isset( $revision['minor'] ) ? 1 : 0 ),
@@ -268,7 +271,7 @@ abstract class TextGrabber extends ExternalWikiGrabber {
 		] + $commentFields;
 
 		# Create content object
-		$content = ContentHandler::makeContent( $text, $title );
+		$content = ContentHandler::makeContent( $text, null, $revision['contentmodel'], $revision['contentformat'] );
 		$slot = SlotRecord::newUnsaved( SlotRecord::MAIN, $content );
 
 		# Insert text (blob)

@@ -7,6 +7,7 @@ use MediaWiki\MediaWikiServices;
 use MediaWiki\Page\PageIdentity;
 use MediaWiki\Page\PageIdentityValue;
 use Wikimedia\Rdbms\SelectQueryBuilder;
+use Wikimedia\Timestamp\ConvertibleTimestamp;
 
 require_once 'includes/TextGrabber.php';
 
@@ -86,7 +87,8 @@ class GrabRevisions extends TextGrabber {
 			$this->output( "Latest revision's timestamp: $arvstart\n" );
 		}
 
-		$pageCount = $this->processRevisionsFromNamespaces( implode( '|', $textNamespaces ), $arvstart - 1, $arvend );
+		$arvstart = ( new ConvertibleTimestamp( $arvstart ) )->sub( 'PT1S' )->getTimestamp( TS_MW );
+		$pageCount = $this->processRevisionsFromNamespaces( implode( '|', $textNamespaces ), $arvstart, $arvend );
 		$this->output( "\nDone - updated $pageCount total pages.\n" );
 		# Done.
 	}

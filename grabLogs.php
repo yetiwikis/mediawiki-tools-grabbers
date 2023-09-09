@@ -16,6 +16,7 @@
  */
 
 use MediaWiki\Linker\LinkTarget;
+use Wikimedia\Timestamp\ConvertibleTimestamp;
 
 require_once 'includes/ExternalWikiGrabber.php';
 
@@ -64,7 +65,7 @@ class GrabLogs extends ExternalWikiGrabber {
 				->caller( __METHOD__ )->fetchField();
 			if ( $lestart ) {
 				// Better to be safe than sorry
-				$lestart -= 1;
+				$lestart = ( new ConvertibleTimestamp( $lestart ) )->sub( 'PT1S' )->getTimestamp( TS_MW );
 				$this->output( "Resume from start = $lestart\n" );
 			} else {
 				$this->output( "No log entries in the database, start from scratch.\n" );

@@ -240,6 +240,22 @@ class GrabLogs extends ExternalWikiGrabber {
 			$explicitParams = $entry[$entry['type']];
 		}
 		if ( !is_null( $explicitParams ) && count( $explicitParams ) > 0 ) {
+			# Since MediaWiki 1.25, legacy plain text format is also
+			# returned as an array inside the params object, with
+			# numeric keys. Detect this case to use the legacy format.
+			if ( count( $explicitParams ) == count( array_filter(
+				$explicitParams,
+				function( $key ) { return is_numeric( $key ); }, ARRAY_FILTER_USE_KEY ) )
+			) {
+				$index = 0;
+				$lines = [];
+				while ( isset( $explicitParams[(string)$index] ) ) {
+					$lines[] = $explicitParams[(string)$index];
+					$index++;
+				}
+				return $encodedParams = implode( "\n", $lines );
+			}
+
 			# Api does some transformations to array parameters, we need to encode
 			# them again to store them in database.
 			# This sucks horribly.
@@ -294,7 +310,7 @@ class GrabLogs extends ExternalWikiGrabber {
 						$unserializedParams['oldmetadata'] = $this->mapToTransformations(
 							$explicitParams['oldmetadata'],
 							[],
-							[ 'expiry' ]
+							[ 'expiry' => null ]
 						);
 					}
 					if ( isset( $explicitParams['newmetadata'] ) ) {
@@ -302,7 +318,7 @@ class GrabLogs extends ExternalWikiGrabber {
 						$unserializedParams['newmetadata'] = $this->mapToTransformations(
 							$explicitParams['newmetadata'],
 							[],
-							[ 'expiry' ]
+							[ 'expiry' => null ]
 						);
 					}
 					break;
@@ -322,13 +338,17 @@ class GrabLogs extends ExternalWikiGrabber {
 				case 'protect':
 					if ( isset( $explicitParams['description'] ) ) {
 						$unserializedParams['4::description'] = $explicitParams['description'];
+					} elseif ( isset( $explicitParams['oldtitle_title'] ) ) {
+						$unserializedParams['4::oldtitle'] = Title::makeTitle(
+							$explicitParams['oldtitle_ns'], $explicitParams['oldtitle_title']
+						)->getPrefixedDBKey();
 					}
 					$unserializedParams['5:bool:cascade'] = isset( $explicitParams['cascade'] );
 					if ( isset( $explicitParams['details'] ) ) {
 						$unserializedParams['details'] = $this->mapToTransformations(
 								$explicitParams['details'],
 								[ 'type', 'level' ],
-								[ 'expiry' ],
+								[ 'expiry' => 'infinite' ],
 								[ 'cascade' ]
 							);
 					}
@@ -351,11 +371,12 @@ class GrabLogs extends ExternalWikiGrabber {
 					}
 					break;
 				case 'upload':
-					$unserializedParams = $this->mapToTransformations(
-							$explicitParams,
-							[ 'img_sha1' ],
-							[ 'img_timestamp' ]
-						);
+					if ( isset( $explicitParams['img_sha1'] ) ) {
+						$unserializedParams['img_sha1'] = $explicitParams['img_sha1'];
+					}
+					if ( isset( $explicitParams['img_timestamp'] ) ) {
+						$unserializedParams['img_timestamp'] = wfTimestamp( TS_MW, $explicitParams['img_timestamp'] );
+					}
 					break;
 				case 'merge':
 					if ( isset( $explicitParams['dest_title'] ) ) {
@@ -365,23 +386,57 @@ class GrabLogs extends ExternalWikiGrabber {
 						$unserializedParams['5::mergepoint'] = wfTimestamp( TS_MW, $explicitParams['mergepoint'] );
 					}
 					break;
-				default:
-					# Since MediaWiki 1.25, legacy plain text format is also
-					# returned as an array inside the params object, with
-					# numeric keys. Detect this case to use the legacy format.
-					if ( count( $explicitParams ) == count( array_filter(
-						$explicitParams,
-						function( $key ) { return is_numeric( $key ); } ) )
-					)
-					{
-						$index = 0;
-						$lines = [];
-						while ( isset( $entry[(string)$index] ) ) {
-							$lines[] = $entry[(string)$index];
-							$index++;
-						}
-						return $encodedParams = implode( "\n", $lines );
+				case 'contentmodel':
+					if ( isset( $explicitParams['oldmodel'] ) ) {
+						$unserializedParams['4::oldmodel'] = $explicitParams['oldmodel'];
 					}
+					if ( isset( $explicitParams['newmodel'] ) ) {
+						$unserializedParams['5::newmodel'] = $explicitParams['newmodel'];
+					}
+					break;
+				case 'tag':
+					if ( isset( $explicitParams['revid'] ) ) {
+						$unserializedParams['4::revid'] = $explicitParams['revid'];
+					}
+					if ( isset( $explicitParams['logid'] ) ) {
+						$unserializedParams['5::logid'] = $explicitParams['logid'];
+					}
+					if ( isset( $explicitParams['tagsAdded'] ) ) {
+						$unserializedParams['6:list:tagsAdded'] = $explicitParams['tagsAdded'];
+					}
+					if ( isset( $explicitParams['tagsAddedCount'] ) ) {
+						$unserializedParams['7:number:tagsAddedCount'] = $explicitParams['tagsAddedCount'];
+					}
+					if ( isset( $explicitParams['tagsRemoved'] ) ) {
+						$unserializedParams['8:list:tagsRemoved'] = $explicitParams['tagsRemoved'];
+					}
+					if ( isset( $explicitParams['tagsRemovedCount'] ) ) {
+						$unserializedParams['9:number:tagsRemovedCount'] = $explicitParams['tagsRemovedCount'];
+					}
+					if ( isset( $explicitParams['initialTags'] ) ) {
+						$unserializedParams['initialTags'] = $explicitParams['initialTags'];
+					}
+					break;
+				case 'managetags':
+					if ( isset( $explicitParams['tag'] ) ) {
+						$unserializedParams['4::tag'] = $explicitParams['tag'];
+					}
+					if ( isset( $explicitParams['count'] ) ) {
+						$unserializedParams['5:number:count'] = $explicitParams['count'];
+					}
+					break;
+				case 'renameuser':
+					if ( isset( $explicitParams['olduser'] ) ) {
+						$unserializedParams['4::olduser'] = $explicitParams['olduser'];
+					}
+					if ( isset( $explicitParams['newuser'] ) ) {
+						$unserializedParams['5::newuser'] = $explicitParams['newuser'];
+					}
+					if ( isset( $explicitParams['edits'] ) ) {
+						$unserializedParams['6::edits'] = $explicitParams['edits'];
+					}
+					break;
+				default:
 					# Otherwise just pass through...
 					# It may insert parameters using the wrong format if they
 					# provide custom formatters, since we're not aware of them
@@ -417,14 +472,15 @@ class GrabLogs extends ExternalWikiGrabber {
 	}
 
 	/**
-	 * Pass an array containing associative arrays, creating a new array with
+	 * Pass an array *containing* associative arrays, creating a new array with
 	 * transformations defined by parameters. Keys not defined in parameters
 	 * won't be copied.
 	 *
 	 * @param array $origin Array containing the associative arrays
 	 *        to transform.
 	 * @param array $passThroughKeys List of keys that will be copied unmodified.
-	 * @param array $timestampKeys List of keys to be transformed as timestamps
+	 * @param array $timestampKeys Associative array of key => infinity pairs
+	 *        to be transformed as timestamps.
 	 * @param array $booleanKeys List of keys to be transformed as booleans
 	 * @return array Modified array
 	 */
@@ -436,10 +492,11 @@ class GrabLogs extends ExternalWikiGrabber {
 					$result[$key] = $item[$key];
 				}
 			}
-			foreach ( $timestampKeys as $key ) {
+			foreach ( $timestampKeys as $key => $infinity ) {
 				if ( isset( $item[$key] ) ) {
-					if ( $item[$key] == 'infinity' ) {
-						$result[$key] = null;
+					# Different log types use different representations of infinity.
+					if ( wfIsInfinity( $item[$key] ) ) {
+						$result[$key] = $infinity;
 					} else {
 						$result[$key] = wfTimestamp( TS_MW, $item[$key] );
 					}

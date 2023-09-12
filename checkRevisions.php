@@ -13,6 +13,7 @@
  */
 
 use MediaWiki\MediaWikiServices;
+use MediaWiki\Revision\RevisionAccessException;
 
 require_once 'includes/ExternalWikiGrabber.php';
 
@@ -38,6 +39,13 @@ class CheckRevisions extends ExternalWikiGrabber {
 	 * @var int
 	 */
 	protected $missingCount = 0;
+
+	/**
+	 * The current hash mismatch count
+	 *
+	 * @var int
+	 */
+	protected $mismatchCount = 0;
 
 	public function __construct() {
 		parent::__construct();
@@ -86,7 +94,7 @@ class CheckRevisions extends ExternalWikiGrabber {
 			}
 		} while ( $more );
 
-		$this->output( "Done.\n\n$this->revCount revisions checked.\n$this->missingCount revisions missing.\n" );
+		$this->output( "Done.\n\n$this->revCount revisions checked.\n$this->missingCount revisions missing.\n$this->mismatchCount hash mismatches.\n" );
 	}
 
 	public function processRevision( $remoteRev ) {
@@ -97,6 +105,17 @@ class CheckRevisions extends ExternalWikiGrabber {
 			// The revision is missing from our database.
 			$this->output( "Bad revision (missing): {$remoteRev['revid']}\n" );
 			$this->missingCount++;
+		} else {
+			try {
+				$sha = Wikimedia\base_convert( $rev->getSha1(), 36, 16, 40 );
+				if ( !is_null( $sha ) && array_key_exists( 'sha1', $remoteRev ) && $sha != $remoteRev['sha1'] ) {
+					// The checksum of our revision and the remote revision doesn't match.
+					$this->output( "Bad revision (hash): {$remoteRev['revid']} (ours: ${sha} | theirs: ${remoteRev['sha1']})\n" );
+					$this->mismatchCount++;
+				}
+			} catch ( RevisionAccessException $e ) {
+				// SHA doesn't exist, or something went wrong, so let's just play safe and do nothing.
+			}
 		}
 	}
 }

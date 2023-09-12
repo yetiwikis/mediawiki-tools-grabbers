@@ -82,7 +82,7 @@ abstract class ExternalWikiGrabber extends Maintenance {
 				'json',
 				$user,
 				$password,
-				'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:13.0) Gecko/20100101 Firefox/13.0.1'
+				'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36'
 			);
 			$error = $this->bot->login();
 			if ( !$error ) {
@@ -97,7 +97,7 @@ abstract class ExternalWikiGrabber extends Maintenance {
 				'json',
 				'',
 				'',
-				'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:13.0) Gecko/20100101 Firefox/13.0.1'
+				'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36'
 			);
 		}
 

@@ -244,6 +244,7 @@ class MediaWikiBot {
 		curl_setopt( $ch, CURLOPT_URL, $url );
 		curl_setopt( $ch, CURLOPT_USERAGENT, USERAGENT );
 		curl_setopt( $ch, CURLOPT_RETURNTRANSFER, 1 );
+		curl_setopt( $ch, CURLOPT_ENCODING, '' );
 		curl_setopt( $ch, CURLOPT_FAILONERROR, 1 );
 		curl_setopt( $ch, CURLOPT_TIMEOUT, 30 );
 		curl_setopt( $ch, CURLOPT_FOLLOWLOCATION, TRUE );
@@ -278,6 +279,7 @@ class MediaWikiBot {
 		curl_setopt( $ch, CURLOPT_URL, $url );
 		curl_setopt( $ch, CURLOPT_USERAGENT, USERAGENT );
 		curl_setopt( $ch, CURLOPT_RETURNTRANSFER, 1 );
+		curl_setopt( $ch, CURLOPT_ENCODING, '' );
 		curl_setopt( $ch, CURLOPT_FAILONERROR, 1 );
 		curl_setopt( $ch, CURLOPT_TIMEOUT, 30 );
 		curl_setopt( $ch, CURLOPT_COOKIEFILE, COOKIES );

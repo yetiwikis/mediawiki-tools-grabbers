@@ -309,7 +309,7 @@ class GrabNewFiles extends FileGrabber {
 	 *
 	 * @param $title string Old title of the file
 	 * @param $newTitle string New title of the file
-	 * @param $user User user which performed the move, used only when
+	 * @param $user UserIdentity user which performed the move, used only when
 	 *          the target title needs to be deleted
 	 */
 	function processMove( $title, $newTitle, $user ) {
@@ -339,7 +339,7 @@ class GrabNewFiles extends FileGrabber {
 		if ( $file->exists() ) {
 			$this->output( "$newTitle aleady exists. Deleting to make room for the move. " );
 			$reason = wfMessage( 'delete_and_move_reason', $newTitle );
-			# NOTE: File::delete takes care to do the related changes
+			# NOTE: File::deleteFile takes care to do the related changes
 			# in the database. For instance, move rows to filearchive
 			# Use the user that performed the move for the deletion
 			$this->dbw->begin();

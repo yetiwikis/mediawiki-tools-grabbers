@@ -17,51 +17,97 @@ require_once 'includes/ExternalWikiGrabber.php';
 
 class GrabPageRestrictions extends ExternalWikiGrabber {
 
+	/**
+	 * Current number of pages retrieved
+	 *
+	 * @var int
+	 */
+	protected int $pageCount = 0;
+
 	public function __construct() {
 		parent::__construct();
 		$this->addDescription( 'Grabs page restrictions from a pre-existing wiki into a new wiki.' );
+		$this->addOption( 'namespaces', 'Pipe-separated namespaces (ID) to grab. Defaults to all namespaces', false, true );
 	}
 
 	public function execute() {
 		parent::execute();
 
+		$this->output( "\n" );
+
+		# Get all pages as a list, start by getting namespace numbers...
+		$this->output( "Retrieving namespaces list...\n" );
+
+		$params = [
+			'meta' => 'siteinfo',
+			'siprop' => 'namespaces'
+		];
+		$result = $this->bot->query( $params );
+		$siteinfo = $result['query'];
+
+		# No data - bail out early
+		if ( empty( $siteinfo ) ) {
+			$this->fatalError( 'No siteinfo data found' );
+		}
+
+		$textNamespaces = [];
+		if ( $this->hasOption( 'namespaces' ) ) {
+			$textNamespaces = explode( '|', $this->getOption( 'namespaces', '' ) );
+		} else {
+			foreach ( array_keys( $siteinfo['namespaces'] ) as $ns ) {
+				# Ignore special
+				if ( $ns >= 0 ) {
+					$textNamespaces[] = $ns;
+				}
+			}
+		}
+		if ( !$textNamespaces ) {
+			$this->fatalError( 'Got no namespaces' );
+		}
+
+		foreach ( $textNamespaces as $ns ) {
+			$this->processNamespace( $ns );
+		}
+
+		$this->output( "Done: $this->pageCount entries processed\n" );
+	}
+
+	public function processNamespace( $ns ) {
 		$params = [
 			'generator' => 'allpages',
 			'gaplimit' => 'max',
 			'prop' => 'info',
 			'inprop' => 'protection',
-			'gapprtype' => 'edit|move|upload'
+			'gapprtype' => 'edit|move|upload',
+			'gapnamespace' => $ns
 		];
 
 		$more = true;
-		$i = 0;
 
-		$this->output( "Grabbing pages with restrictions...\n" );
+		$this->output( "Grabbing pages with restrictions for namespace $ns...\n" );
 		do {
 			$result = $this->bot->query( $params );
 
 			if ( empty( $result['query']['pages'] ) ) {
-				$this->fatalError( 'No pages with restrictions, hence nothing to do.' );
+				return;
 			}
 
 			foreach ( $result['query']['pages'] as $page ) {
 				$this->processPage( $page );
-				$i++;
+				$this->pageCount++;
 
-				if ( isset( $result['query-continue'] ) && isset( $result['query-continue']['pages'] ) ) {
+				if ( isset( $result['query-continue']['pages'] ) ) {
 					$params = array_merge( $params, $result['query-continue']['pages'] );
-					$this->output( "{$i} entries processed.\n" );
+					$this->output( "$this->pageCount entries processed.\n" );
 				} elseif ( isset( $result['continue'] ) ) {
 					$params = array_merge( $params, $result['continue'] );
-					$this->output( "{$i} entries processed.\n" );
+					$this->output( "$this->pageCount entries processed.\n" );
 				} else {
 					$more = false;
 				}
 			}
 
 		} while ( $more );
-
-		$this->output( "Done: $i entries processed\n" );
 	}
 
 	public function processPage( $page ) {

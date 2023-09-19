@@ -10,7 +10,9 @@
  * @note Based on code by Jack Phoenix and Edward Chernenko.
  */
 
- require_once 'includes/FileGrabber.php';
+require_once __DIR__ . '/../maintenance/Maintenance.php';
+require_once 'includes/mediawikibot.class.php';
+require_once 'includes/mediawikibotHacks.php';
 
 class GrabDeletedFiles extends FileGrabber {
 
@@ -29,10 +31,35 @@ class GrabDeletedFiles extends FileGrabber {
 	public function execute() {
 		parent::execute();
 
+		$url = $this->getOption( 'url' );
 		$imagesurl = $this->getOption( 'imagesurl' );
 		$scrape = $this->hasOption( 'scrape' );
 		if ( !$imagesurl && !$scrape ) {
 			$this->fatalError( 'Unless we\'re screenscraping it, the URL to the target wiki\'s images directory is required.' );
+		}
+		$this->user = $this->getOption( 'username' );
+		$password = $this->getOption( 'password' );
+		if ( !$this->user || !$password ) {
+			$this->fatalError( 'An admin username and password are required.' );
+		}
+
+		$this->output( "Working...\n" );
+
+		if ( $scrape ) {
+			// If we're screenscraping, we need to use a different instance of MediaWikiBot.
+			$this->bot = new MediaWikiBotHacked(
+				$url,
+				'json',
+				$this->user,
+				$password,
+				'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:13.0) Gecko/20100101 Firefox/13.0.1'
+			);
+			if ( !$this->bot->login() ) {
+				$this->output( "Logged in as {$this->user}...\n" );
+				$this->lastLogin = time();
+			} else {
+				$this->fatalError( "Failed to log in as {$this->user}." );
+			}
 		}
 
 		$skipMetaData = $this->hasOption( 'skipmetadata' );
@@ -221,7 +248,11 @@ class GrabDeletedFiles extends FileGrabber {
 	}
 
 	function processFile( $entry ) {
-		global $wgDBname;
+		$comment = $entry['description'] ?? '';
+
+		$actor = $this->getActorFromUser( (int)$entry['userid'], $entry['user'] );
+
+		$commentFields = $this->commentStore->insert( $this->dbw, 'fa_description', $comment );
 
 		$comment = $entry['description'];
 		if ( !$comment ) {
@@ -274,10 +305,8 @@ class GrabDeletedFiles extends FileGrabber {
 		$e['fa_deleted_reason_id'] = 0;
 		$e['fa_archive_name'] = null; # UN:N; MediaWiki figures it out anyway.
 
-		$dbw = wfGetDB( DB_MASTER, [], $this->getOption( 'db', $wgDBname ) );
-
 		// Avoid adding duplicate entries.
-		$row = $dbw->selectRow(
+		$row = $this->dbw->selectRow(
 			'filearchive',
 			[
 				'1',
@@ -286,7 +315,7 @@ class GrabDeletedFiles extends FileGrabber {
 			__METHOD__
 		);
 		if ( !$row ) {
-			$dbw->insert( 'filearchive', $e, __METHOD__ );
+			$this->dbw->insert( 'filearchive', $e, __METHOD__ );
 		}
 
 		# $this->output( "Changes committed to the database!\n" );

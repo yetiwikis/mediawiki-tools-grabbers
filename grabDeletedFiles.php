@@ -12,7 +12,6 @@
 
 require_once __DIR__ . '/../maintenance/Maintenance.php';
 require_once 'includes/mediawikibot.class.php';
-require_once 'includes/mediawikibotHacks.php';
 
 class GrabDeletedFiles extends FileGrabber {
 
@@ -44,23 +43,6 @@ class GrabDeletedFiles extends FileGrabber {
 		}
 
 		$this->output( "Working...\n" );
-
-		if ( $scrape ) {
-			// If we're screenscraping, we need to use a different instance of MediaWikiBot.
-			$this->bot = new MediaWikiBotHacked(
-				$url,
-				'json',
-				$this->user,
-				$password,
-				'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:13.0) Gecko/20100101 Firefox/13.0.1'
-			);
-			if ( !$this->bot->login() ) {
-				$this->output( "Logged in as {$this->user}...\n" );
-				$this->lastLogin = time();
-			} else {
-				$this->fatalError( "Failed to log in as {$this->user}." );
-			}
-		}
 
 		$skipMetaData = $this->hasOption( 'skipmetadata' );
 

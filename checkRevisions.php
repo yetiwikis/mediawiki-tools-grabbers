@@ -56,21 +56,62 @@ class CheckRevisions extends TextGrabber {
 	 */
 	protected $replacedCount = 0;
 
+	/**
+	 * Start date
+	 *
+	 * @var string
+	 */
+	protected $startDate;
+
+	/**
+	 * End date
+	 *
+	 * @var string
+	 */
+	protected $endDate;
+
+	/**
+	 * Dry run
+	 *
+	 * @var bool
+	 */
+	protected $dry;
+
 	public function __construct() {
 		parent::__construct();
 		$this->addDescription('Checks that our database contains all of the remote wiki\'s revisions');
+		$this->addOption( 'startdate', 'Any revision before this time will not be checked on the remote wiki', false, true );
+		$this->addOption( 'enddate', 'Any revision after this time will not be checked on the remote wiki', false, true );
 		$this->addOption( 'report', 'Report position after every n revisions processed (default is 5000)', false, true );
+		$this->addOption( 'dry', 'Perform a dry-run, where the database is not modified', false, false );
 	}
 
 	public function execute() {
 		parent::execute();
 		$this->reportInterval = intval( $this->getOption( 'report', 5000 ) );
+		$this->dry = $this->getOption( 'dry', false );
+
+		$this->startDate = $this->getOption( 'startdate' );
+		if ( $this->startDate ) {
+			if (!wfTimestamp(TS_ISO_8601, $this->startDate)) {
+				$this->fatalError('Invalid start date format.');
+			}
+		}
+
+		$this->endDate = $this->getOption( 'enddate' );
+		if ( $this->endDate ) {
+			if (!wfTimestamp(TS_ISO_8601, $this->endDate)) {
+				$this->fatalError('Invalid end date format.');
+			}
+		}
 
 		$params = [
 			'list' => 'allrevisions',
 			'arvprop' => 'ids|timestamp|sha1',
 			'arvlimit' => 'max',
-			'arvdir' => 'older',
+			'arvdir' => 'newer',
+			'arvstart' => $this->startDate,
+			'arvend' => $this->endDate
 		];
 
 
@@ -106,12 +147,116 @@ class CheckRevisions extends TextGrabber {
 		$this->output( "Done.\n\n$this->revCount revisions checked.\n$this->missingCount revisions missing.\n$this->mismatchCount hash mismatches.\n$this->replacedCount revisions replaced.\n" );
 	}
 
+	public function fetchRemoteRevision( $revId ) {
+		$params = [
+			'prop' => 'revisions',
+			'rvprop' => 'ids|timestamp|sha1|content|contentmodel|comment|user|userid',
+			'revids' => $revId
+		];
+		$result = $this->bot->query( $params );
+
+		if ( empty( $result['query']['pages'] ) ) {
+			$this->error( "Could not fetch data for $revId on remote wiki: bad API call.\n" );
+			return;
+		}
+
+		$remoteRev = $result['query']['pages'][array_key_first( $result['query']['pages'] )]['revisions'][0];
+		return $remoteRev;
+	}
+
+	public function replaceRevision( $rev, $remoteRev ) {
+		// If it is empty, then replace it with the content from the remote wiki.
+		// We fetch the revision text again separately here, because getting "content" is expensive
+		// to do all the time in the original API call.
+		$remoteRev = $this->fetchRemoteRevision( $remoteRev['revid'] );
+		$content = ContentHandler::makeContent( $remoteRev['*'], null, $remoteRev['contentmodel'], $remoteRev['contentformat'] );
+		$revId = $remoteRev['revid'];
+
+		// TODO: do it in a better way than the next lines of code, which feel jank...
+		$updatedRev = MutableRevisionRecord::newUpdatedRevisionRecord( $rev, [] );
+		$updatedRev->setContent( SlotRecord::MAIN, $content );
+		$updatedRev->setTimestamp( $rev->getTimestamp() );
+		$updatedRev->setMinorEdit( $rev->isMinor() );
+		$updatedRev->setComment( $rev->getComment() );
+		$updatedRev->setVisibility( $rev->getVisibility() );
+
+		if ( $this->dry ) {
+			$this->output( "[DRY]: Would have replaced revision $revId with content from remote wiki\n" );
+		} else {
+			// Delete our version of the revision and save the new version.
+			$this->dbw->delete(
+				'revision',
+				[ 'rev_id' => $revId ],
+				__METHOD__
+			);
+			$this->dbw->delete(
+				'slots',
+				[ 'slot_revision_id' => $revId ],
+				__METHOD__
+			);
+
+			$this->revisionStore->insertRevisionOn( $updatedRev, $this->dbw );
+		}
+
+		$this->output("Replaced revision $rev with content from remote wiki\n");
+	}
+
 	public function handleRevision( $remoteRev ) {
 		$rev = $this->revisionStore->getRevisionById( $remoteRev['revid'] );
 
 		if ( is_null( $rev ) ) {
 			// The revision is missing from our database.
 			$this->output( "Bad revision (missing): {$remoteRev['revid']}\n" );
+
+			$parentRev = $this->revisionStore->getRevisionById( $remoteRev['parentid'] );
+			if ( !$parentRev || !$remoteRev['parentid'] ) {
+				$this->output( "Parent rev {$remoteRev['parentid']} not found in DB for rev {$remoteRev['revid']} - cannot fix missing revision\n" );
+				return;
+			}
+
+			$remoteRev = $this->fetchRemoteRevision( $remoteRev['revid'] );
+
+			# Sloppy handler for revdeletions; just fills them in with dummy text
+			# and sets bitfield thingy
+			$revdeleted = 0;
+			if ( isset( $remoteRev['userhidden'] ) ) {
+				$revdeleted = $revdeleted | RevisionRecord::DELETED_USER;
+				if ( !isset( $remoteRev['user'] ) ) {
+					$remoteRev['user'] = ''; # username removed
+				}
+				if ( !isset( $remoteRev['userid'] ) ) {
+					$remoteRev['userid'] = 0;
+				}
+			}
+			$comment = $remoteRev['comment'] ?? '';
+			if ( isset( $remoteRev['commenthidden'] ) ) {
+				$revdeleted = $revdeleted | RevisionRecord::DELETED_COMMENT;
+			}
+			$text = $remoteRev['*'] ?? '';
+			if ( isset( $remoteRev['texthidden'] ) ) {
+				$revdeleted = $revdeleted | RevisionRecord::DELETED_TEXT;
+			}
+			if ( isset ( $remoteRev['suppressed'] ) ) {
+				$revdeleted = $revdeleted | RevisionRecord::DELETED_RESTRICTED;
+			}
+
+			$rev = MutableRevisionRecord::newFromParentRevision( $parentRev );
+			$content = ContentHandler::makeContent( $text, null, $remoteRev['contentmodel'], $remoteRev['contentformat'] );
+			$rev->setId( $remoteRev['revid'] );
+			$rev->setComment( CommentStoreComment::newUnsavedComment( $comment ) );
+			$rev->setContent( SlotRecord::MAIN, $content );
+			$rev->setVisibility( $revdeleted );
+			$rev->setTimestamp( $remoteRev['timestamp'] );
+			$rev->setMinorEdit( isset( $remoteRev['minor'] ) );
+			$userIdentity = $this->getUserIdentity( $remoteRev['userid'], $remoteRev['user'] );
+			$rev->setUser( $userIdentity );
+
+			if ( $this->dry ) {
+				$this->output( "[DRY]: Would have inserted revision {$remoteRev['revid']} on {$rev->getPageId()} with content from {$remoteRev['user']} from remote wiki\n" );
+			} else {
+				$this->revisionStore->insertRevisionOn( $rev, $this->dbw );
+			}
+
 			$this->missingCount++;
 		} else {
 			try {
@@ -124,47 +269,7 @@ class CheckRevisions extends TextGrabber {
 					// Check whether our revision is an empty revision, because sites like Fandom often have empty
 					// revision content on a random number of pages inside their XML dumps.
 					if ( $rev->getSize() === 0 ) {
-						// If it is empty, then replace it with the content from the remote wiki.
-						// We fetch the revision text again separately here, because getting "content" is expensive
-						// to do all the time in the original API call.
-						$params = [
-							'prop' => 'revisions',
-							'rvprop' => 'ids|timestamp|sha1|content|contentmodel',
-							'revids' => $remoteRev['revid']
-						];
-						$result = $this->bot->query( $params );
-
-						if ( empty( $result['query']['pages'] ) ) {
-							$this->error( "Could not replace revision {$remoteRev['revid']} with remote wiki: bad API call." );
-							return;
-						}
-
-						$remoteRev = $result['query']['pages'][array_key_first( $result['query']['pages'] )]['revisions'][0];
-						$content = ContentHandler::makeContent( $remoteRev['*'], null, $remoteRev['contentmodel'], $remoteRev['contentformat'] );
-
-						// TODO: do it in a better way than the next lines of code, which feel jank...
-						$updatedRev = MutableRevisionRecord::newUpdatedRevisionRecord( $rev, [] );
-						$updatedRev->setContent( SlotRecord::MAIN, $content );
-						$updatedRev->setTimestamp( $rev->getTimestamp() );
-						$updatedRev->setMinorEdit( $rev->isMinor() );
-						$updatedRev->setComment( $rev->getComment() );
-						$updatedRev->setVisibility( $rev->getVisibility() );
-
-						// Delete our version of the revision and save the new version.
-						$this->dbw->delete(
-							'revision',
-							[ 'rev_id' => $remoteRev['revid'] ],
-							__METHOD__
-						);
-						$this->dbw->delete(
-							'slots',
-							[ 'slot_revision_id' => $remoteRev['revid'] ],
-							__METHOD__
-						);
-
-						$this->revisionStore->insertRevisionOn( $updatedRev, $this->dbw );
-
-						$this->output("Replaced revision {$remoteRev['revid']} with content from remote wiki\n");
+						$this->replaceRevision( $rev, $remoteRev );
 						$this->replacedCount++;
 					}
 				}

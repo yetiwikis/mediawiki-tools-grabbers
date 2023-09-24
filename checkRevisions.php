@@ -194,6 +194,11 @@ class CheckRevisions extends TextGrabber {
 				[ 'slot_revision_id' => $revId ],
 				__METHOD__
 			);
+			$this->dbw->delete(
+				'ip_changes',
+				[ 'ipc_rev_id' => $remoteRev['revid'] ],
+				__METHOD__
+			);
 
 			$this->revisionStore->insertRevisionOn( $updatedRev, $this->dbw );
 		}

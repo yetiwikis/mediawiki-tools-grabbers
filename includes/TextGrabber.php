@@ -497,6 +497,11 @@ abstract class TextGrabber extends ExternalWikiGrabber {
 				__METHOD__
 			);
 		}
+		$this->dbw->delete(
+			'ip_changes',
+			[ 'ipc_rev_id' => $revids ],
+			__METHOD__
+		);
 		# Also delete any restrictions
 		$this->dbw->delete(
 			'page_restrictions',

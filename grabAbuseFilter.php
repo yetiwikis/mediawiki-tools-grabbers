@@ -16,20 +16,6 @@ require_once 'includes/ExternalWikiGrabber.php';
 
 class GrabAbuseFilter extends ExternalWikiGrabber {
 
-	/**
-	 * API limits to use instead of max
-	 *
-	 * @var int
-	 */
-	protected $apiLimits;
-
-	/**
-	 * API limits to use instead of max
-	 *
-	 * @var array
-	 */
-	protected $validLogTypes;
-
 	public function __construct() {
 		parent::__construct();
 		$this->mDescription = 'Grabs logs from a pre-existing wiki into a new wiki.';

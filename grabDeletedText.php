@@ -20,13 +20,6 @@ require_once 'includes/TextGrabber.php';
 class GrabDeletedText extends TextGrabber {
 
 	/**
-	 * API limits to use instead of max
-	 *
-	 * @var int
-	 */
-	protected $apiLimits;
-
-	/**
 	 * Array of namespaces to grab deleted revisions
 	 *
 	 * @var Array
@@ -39,7 +32,6 @@ class GrabDeletedText extends TextGrabber {
 		# $this->addOption( 'start', 'Revision at which to start', false, true );
 		#$this->addOption( 'startdate', 'Not yet implemented.', false, true );
 		$this->addOption( 'adrcontinue', 'API continue to restart deleted revision process', false, true );
-		$this->addOption( 'apilimits', 'API limits to use. Maximum limits for the user will be used by default', false, true );
 		$this->addOption( 'namespaces', 'Pipe-separated namespaces (ID) to grab. Defaults to all namespaces', false, true );
 	}
 
@@ -55,13 +47,6 @@ class GrabDeletedText extends TextGrabber {
 			}
 		} else {
 			$this->endDate = wfTimestampNow();
-		}
-
-		$apiLimits = $this->getOption( 'apilimits' );
-		if ( !is_null( $apiLimits ) && is_numeric( $apiLimits ) && (int)$apiLimits > 0 ) {
-			$this->apiLimits = (int)$apiLimits;
-		} else {
-			$this->apiLimits = null;
 		}
 
 		$this->output( "Retreiving namespaces list...\n" );
@@ -125,7 +110,7 @@ class GrabDeletedText extends TextGrabber {
 			$params = [
 				'list' => 'alldeletedrevisions',
 				'adrnamespace' => $ns,
-				'adrlimit' => $this->getApiLimit(),
+				'adrlimit' => 'max',
 				'adrdir' => 'newer',
 				'adrprop' => 'ids|user|userid|comment|flags|content|tags|timestamp',
 			];
@@ -222,19 +207,6 @@ class GrabDeletedText extends TextGrabber {
 		}
 
 		return $nsRevisions;
-	}
-
-	/**
-	 * Returns the standard api result limit for queries
-	 *
-	 * @returns int limit provided by user, or 'max' to use the maximum
-	 *          allowed for the user querying the api
-	 */
-	function getApiLimit() {
-		if ( is_null( $this->apiLimits ) ) {
-			return 'max';
-		}
-		return $this->apiLimits;
 	}
 
 }

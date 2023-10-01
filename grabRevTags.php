@@ -20,13 +20,6 @@ require_once 'includes/TextGrabber.php';
 class GrabRevTags extends TextGrabber {
 
 	/**
-	 * API limits to use instead of max
-	 *
-	 * @var int
-	 */
-	protected $apiLimits;
-
-	/**
 	 * Array of namespaces to grab deleted revisions
 	 *
 	 * @var Array
@@ -61,7 +54,7 @@ class GrabRevTags extends TextGrabber {
 
 		$params = [
 			'list' => 'allrevisions',
-			'arvlimit' => $this->getApiLimit(),
+			'arvlimit' => 'max',
 			'arvdir' => 'newer',
 			'arvprop' => 'ids|tags|timestamp',
 		];
@@ -145,19 +138,6 @@ class GrabRevTags extends TextGrabber {
 		}
 
 		return $revisions_processed;
-	}
-
-	/**
-	 * Returns the standard api result limit for queries
-	 *
-	 * @returns int limit provided by user, or 'max' to use the maximum
-	 *          allowed for the user querying the api
-	 */
-	function getApiLimit() {
-		if ( is_null( $this->apiLimits ) ) {
-			return 'max';
-		}
-		return $this->apiLimits;
 	}
 
 }

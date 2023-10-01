@@ -22,14 +22,7 @@ require_once 'includes/ExternalWikiGrabber.php';
 class GrabLogs extends ExternalWikiGrabber {
 
 	/**
-	 * API limits to use instead of max
-	 *
-	 * @var int
-	 */
-	protected $apiLimits;
-
-	/**
-	 * API limits to use instead of max
+	 * Only process these log types
 	 *
 	 * @var array
 	 */
@@ -40,19 +33,11 @@ class GrabLogs extends ExternalWikiGrabber {
 		$this->mDescription = 'Grabs logs from a pre-existing wiki into a new wiki.';
 		$this->addOption( 'start', 'Start point (20121222142317, 2012-12-22T14:23:17Z, etc)', false, true );
 		$this->addOption( 'end', 'Log time at which to stop (20121222142317, 2012-12-22T14:23:17Z, etc)', false, true );
-		$this->addOption( 'apilimits', 'API limits to use. Maximum limits for the user will be used by default', false, true );
 		$this->addOption( 'logtypes', 'Process only logs of those types (pipe separated list). All logs will be processed by default', false, true );
 	}
 
 	public function execute() {
 		parent::execute();
-
-		$apiLimits = $this->getOption( 'apilimits' );
-		if ( !is_null( $apiLimits ) && is_numeric( $apiLimits ) && (int)$apiLimits > 0 ) {
-			$this->apiLimits = (int)$apiLimits;
-		} else {
-			$this->apiLimits = null;
-		}
 
 		$validLogTypes = $this->getOption( 'logtypes' );
 		if ( !is_null( $validLogTypes ) ) {
@@ -61,7 +46,7 @@ class GrabLogs extends ExternalWikiGrabber {
 
 		$params = [
 			'list' => 'logevents',
-			'lelimit' => $this->getApiLimit(),
+			'lelimit' => 'max',
 			'ledir' => 'newer',
 			'leprop' => 'ids|title|type|user|userid|timestamp|comment|details|tags',
 		];
@@ -510,18 +495,6 @@ class GrabLogs extends ExternalWikiGrabber {
 		return $transformed;
 	}
 
-	/**
-	 * Returns the standard api result limit for queries
-	 *
-	 * @return int limit provided by user, or 'max' to use the maximum
-	 *          allowed for the user querying the api
-	 */
-	function getApiLimit() {
-		if ( is_null( $this->apiLimits ) ) {
-			return 'max';
-		}
-		return $this->apiLimits;
-	}
 }
 
 $maintClass = 'GrabLogs';

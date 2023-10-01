@@ -46,6 +46,10 @@
 
 class MediaWikiBot {
 
+	/** cURL handle for connection reuse.
+	 */
+	protected $ch;
+
 	/** Methods set by the mediawiki api
 	 */
 	protected $apimethods = array(
@@ -127,6 +131,8 @@ class MediaWikiBot {
 		define( 'USERAGENT', $useragent );
 		define( 'COOKIES', $cookies );
 
+		// cURL handle for connection reuse.
+		$this->ch = curl_init();
 	}
 
 	/** Dynamic method server
@@ -156,6 +162,10 @@ class MediaWikiBot {
 		}
 	}
 
+	public function __destruct() {
+		# close the connection
+		curl_close( $this->ch );
+	}
 	/** Log in and get the authentication tokens
 	 *
 	 *  MediaWiki requires a dual login method to confirm authenticity. This
@@ -238,30 +248,27 @@ class MediaWikiBot {
 	/** Like curl_post, but for dumb hacks (grabDeletedFiles screenscraping, specifically)
 	 */
 	public function curl_get( $url ) {
-		# open the connection
-		$ch = curl_init();
+		curl_reset( $this->ch );
 		# set the url, stuff
-		curl_setopt( $ch, CURLOPT_URL, $url );
-		curl_setopt( $ch, CURLOPT_USERAGENT, USERAGENT );
-		curl_setopt( $ch, CURLOPT_RETURNTRANSFER, 1 );
-		curl_setopt( $ch, CURLOPT_ENCODING, '' );
-		curl_setopt( $ch, CURLOPT_FAILONERROR, 1 );
-		curl_setopt( $ch, CURLOPT_TIMEOUT, 30 );
-		curl_setopt( $ch, CURLOPT_FOLLOWLOCATION, TRUE );
-		curl_setopt( $ch, CURLOPT_MAXREDIRS, 5 );
-		curl_setopt( $ch, CURLOPT_COOKIEFILE, COOKIES );
-		curl_setopt( $ch, CURLOPT_COOKIEJAR, COOKIES );
+		curl_setopt( $this->ch, CURLOPT_URL, $url );
+		curl_setopt( $this->ch, CURLOPT_USERAGENT, USERAGENT );
+		curl_setopt( $this->ch, CURLOPT_RETURNTRANSFER, 1 );
+		curl_setopt( $this->ch, CURLOPT_ENCODING, '' );
+		curl_setopt( $this->ch, CURLOPT_FAILONERROR, 1 );
+		curl_setopt( $this->ch, CURLOPT_TIMEOUT, 30 );
+		curl_setopt( $this->ch, CURLOPT_FOLLOWLOCATION, TRUE );
+		curl_setopt( $this->ch, CURLOPT_MAXREDIRS, 5 );
+		curl_setopt( $this->ch, CURLOPT_COOKIEFILE, COOKIES );
+		curl_setopt( $this->ch, CURLOPT_COOKIEJAR, COOKIES );
 
 		# execute the get
-		$results = curl_exec( $ch );
-		$error = curl_errno( $ch );
+		$results = curl_exec( $this->ch );
+		$error = curl_errno( $this->ch );
 		if ( $error !== 0 ) {
-			$results = [ false, sprintf( "%s", curl_error( $ch ) ) ];
+			$results = [ false, sprintf( "%s", curl_error( $this->ch ) ) ];
 		} else {
 			$results = [ true, $results ];
 		}
-		# close the connection
-		curl_close( $ch );
 		# return the unserialized results
 		return $results;
 	}
@@ -273,34 +280,31 @@ class MediaWikiBot {
 		if ( empty( $params['format'] ) ) {
 			$params['format'] = FORMAT;
 		}
-		# open the connection
-		$ch = curl_init();
+		curl_reset( $this->ch );
 		# set the url, number of POST vars, POST data
-		curl_setopt( $ch, CURLOPT_URL, $url );
-		curl_setopt( $ch, CURLOPT_USERAGENT, USERAGENT );
-		curl_setopt( $ch, CURLOPT_RETURNTRANSFER, 1 );
-		curl_setopt( $ch, CURLOPT_ENCODING, '' );
-		curl_setopt( $ch, CURLOPT_FAILONERROR, 1 );
-		curl_setopt( $ch, CURLOPT_TIMEOUT, 30 );
-		curl_setopt( $ch, CURLOPT_COOKIEFILE, COOKIES );
-		curl_setopt( $ch, CURLOPT_COOKIEJAR, COOKIES );
-		curl_setopt( $ch, CURLOPT_POST, count( $params ) );
+		curl_setopt( $this->ch, CURLOPT_URL, $url );
+		curl_setopt( $this->ch, CURLOPT_USERAGENT, USERAGENT );
+		curl_setopt( $this->ch, CURLOPT_RETURNTRANSFER, 1 );
+		curl_setopt( $this->ch, CURLOPT_ENCODING, '' );
+		curl_setopt( $this->ch, CURLOPT_FAILONERROR, 1 );
+		curl_setopt( $this->ch, CURLOPT_TIMEOUT, 30 );
+		curl_setopt( $this->ch, CURLOPT_COOKIEFILE, COOKIES );
+		curl_setopt( $this->ch, CURLOPT_COOKIEJAR, COOKIES );
+		curl_setopt( $this->ch, CURLOPT_POST, count( $params ) );
 		# choose multipart if necessary
 		if ( $multipart ) {
 			# submit as multipart
-			curl_setopt( $ch, CURLOPT_POSTFIELDS, $params );
+			curl_setopt( $this->ch, CURLOPT_POSTFIELDS, $params );
 		} else {
 			# submit as normal
-			curl_setopt( $ch, CURLOPT_POSTFIELDS, $this->urlize_params( $params ) );
+			curl_setopt( $this->ch, CURLOPT_POSTFIELDS, $this->urlize_params( $params ) );
 		}
 		# execute the post
-		$results = curl_exec( $ch );
-		$error = curl_errno( $ch );
+		$results = curl_exec( $this->ch );
+		$error = curl_errno( $this->ch );
 		if ( $error !== 0 ) {
-			echo sprintf( "CURL ERROR: %s\n", curl_error( $ch ) );
+			echo sprintf( "CURL ERROR: %s\n", curl_error( $this->ch ) );
 		}
-		# close the connection
-		curl_close( $ch );
 		# return the unserialized results
 		return $error !== 0 ? false : $this->format_results( $results, $params['format'] );
 	}

@@ -147,7 +147,7 @@ abstract class TextGrabber extends ExternalWikiGrabber {
 		$this->output( "Inserting revision {$revid}\n" );
 
 		$rev = new MutableRevisionRecord( $pageIdent );
-		$content = ContentHandler::makeContent( $text, null, $revision['contentmodel'], $revision['contentformat'] );
+		$content = ContentHandler::makeContent( $text, null, $revision['contentmodel'], $revision['contentformat'] ?? null );
 		$rev->setId( $revid );
 		$rev->setContent( SlotRecord::MAIN, $content );
 		$rev->setComment( CommentStoreComment::newUnsavedComment( $comment ) );
@@ -271,7 +271,7 @@ abstract class TextGrabber extends ExternalWikiGrabber {
 		] + $commentFields;
 
 		# Create content object
-		$content = ContentHandler::makeContent( $text, null, $revision['contentmodel'], $revision['contentformat'] );
+		$content = ContentHandler::makeContent( $text, null, $revision['contentmodel'], $revision['contentformat'] ?? null );
 		$slot = SlotRecord::newUnsaved( SlotRecord::MAIN, $content );
 
 		# Insert text (blob)

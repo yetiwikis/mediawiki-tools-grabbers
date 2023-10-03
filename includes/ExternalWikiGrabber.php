@@ -178,6 +178,7 @@ abstract class ExternalWikiGrabber extends Maintenance {
 	 * @return string The new user name
 	 */
 	private function getAndUpdateUserName( UserIdentity $user ) {
+		$oldname = $user->getName();
 		$userid = $user->getId();
 		$params = [
 			'list' => 'users',
@@ -193,6 +194,19 @@ abstract class ExternalWikiGrabber extends Maintenance {
 		$this->actorStore->deleteUserIdentityFromCache( $user );
 
 		$newname = $result['query']['users'][0]['name'];
+
+		$conflictingid = (int)$this->dbw->selectField(
+			'user',
+			'user_id',
+			[
+				'user_name' => $newname,
+			],
+			__METHOD__
+		);
+		if ( $conflictingid && $conflictingid !== $userid ) {
+			$this->output( "Notice: User name $newname is already in use by ID $conflictingid, keeping user name $oldname for $userid\n" );
+			return $oldname;
+		}
 		# Adapt from RenameuserSQL::rename(), do we need other parts?
 		$this->dbw->update(
 			'user',

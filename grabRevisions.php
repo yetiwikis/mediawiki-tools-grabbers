@@ -213,10 +213,11 @@ class GrabRevisions extends TextGrabber {
 			'arvlimit' => 'max',
 			'arvdir' => 'newer', // Grab old revisions first
 			'arvprop' => 'ids|flags|timestamp|user|userid|comment|content|tags|contentmodel|size',
-			'arvnamespace' => $ns,
-			'arvslots' => 'main',
 		];
-		if ( $arvstart ) {
+		if ( $this->hasOption( 'namespaces' ) ) {
+			$params['arvnamespace'] = $ns;
+		}
+		if ( $this->getOption( 'arvstart' ) || $this->getOption( 'new-revisions' ) ) {
 			$params['arvstart'] = $arvstart;
 		}
 		if ( $arvend ) {

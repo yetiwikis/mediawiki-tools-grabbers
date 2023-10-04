@@ -180,6 +180,22 @@ abstract class ExternalWikiGrabber extends Maintenance {
 	private function getAndUpdateUserName( UserIdentity $user ) {
 		$oldname = $user->getName();
 		$userid = $user->getId();
+
+		// Don't rename users who have already migrated.
+		$usermigrated = $this->dbw->selectField(
+			'user',
+			'1',
+			[
+				'user_id' => $userid,
+				"user_password != ''",
+			],
+			__METHOD__
+		);
+		if ( $usermigrated ) {
+			$this->output( "Notice: User ID $userid already migrated, keeping user name as $oldname.\n" );
+			return $oldname;
+		}
+
 		$params = [
 			'list' => 'users',
 			'ususerids' => $userid,

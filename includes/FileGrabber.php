@@ -396,6 +396,7 @@ abstract class FileGrabber extends ExternalWikiGrabber {
 		# of a known file extension in the title, but I don't wanna mess
 		# with regex right now. --ashley, 17 April 2016
 		if ( $this->isWikia &&
+			isset( $fileVersion['mime'] ) &&
 			$fileVersion['mime'] == 'video/youtube' &&
 			strtoupper( $fileVersion['mediatype'] ) == 'VIDEO'
 		) {

@@ -266,6 +266,7 @@ class GrabNewFiles extends FileGrabber {
 			'oi_width' => 'img_width',
 			'oi_height' => 'img_height',
 			'oi_bits' => 'img_bits',
+			'oi_description_id' => 'img_description_id',
 			'oi_timestamp' => 'img_timestamp',
 			#'oi_description' => 'img_description',
 			#'oi_user' => 'img_user',

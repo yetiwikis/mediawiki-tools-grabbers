@@ -206,6 +206,11 @@ class GrabNewFiles extends FileGrabber {
 		$currentEntry = null;
 		$oldArchiveName = null;
 		foreach ( $page['imageinfo'] as $fileVersion ) {
+			// Skip missing file version.
+			if ( isset( $fileVersion['filemissing'] ) ) {
+				$this->output( "Skipping missing file version...\n" );
+				continue;
+			}
 			if ( is_null( $currentEntry ) ) {
 				if ( $fileVersion['timestamp'] == $timestamp ) {
 					$currentEntry = $fileVersion;
@@ -472,6 +477,12 @@ class GrabNewFiles extends FileGrabber {
 					return;
 				}
 
+				// Skip missing file version.
+				if ( isset( $fileVersion['filemissing'] ) ) {
+					$this->output( "Skipping missing file version...\n" );
+					continue;
+				}
+
 				# The code will enter this conditional only on the last iteration,
 				# or before if it happens that there are multiple files with
 				# the same timestamp than our latest version
@@ -602,13 +613,17 @@ class GrabNewFiles extends FileGrabber {
 				return;
 			}
 			foreach ( $page['imageinfo'] as $fileVersion ) {
-				$timestamp = wfTimestamp( TS_MW, $fileVersion['timestamp'] );
-
 				# Check for Wikia's videos
 				if ( $this->isWikiaVideo( $fileVersion ) ) {
 					$this->output( "...this appears to be a video, skipping it.\n" );
 					return;
 				}
+				// Skip missing file version.
+				if ( isset( $fileVersion['filemissing'] ) ) {
+					$this->output( "Skipping missing file version...\n" );
+					continue;
+				}
+				$timestamp = wfTimestamp( TS_MW, $fileVersion['timestamp'] );
 
 				if ( $moveOldImage && $fileVersion['timestamp'] == $ourtimestamp ) {
 					# Our current revision is found.

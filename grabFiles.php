@@ -104,6 +104,12 @@ class GrabFiles extends FileGrabber {
 		$count = 0;
 
 		foreach ( $entry['imageinfo'] as $fileVersion ) {
+			// Skip missing file version.
+			if ( isset( $fileVersion['filemissing'] ) ) {
+				$this->output( "Skipping missing file version...\n" );
+				continue;
+			}
+
 			# Api returns file revisions from new to old.
 			# WARNING: If a new version of a file is uploaded after the start of the script
 			# (or endDate), the file and all its previous revisions would be skipped,

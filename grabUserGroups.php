@@ -56,6 +56,7 @@ class GrabUserGroups extends ExternalWikiGrabber {
 				'content-reviewer',
 				'content-volunteer',
 				'council',
+				'emailconfirmed',
 				'fandom-editor',
 				'fandom-star',
 				'global-discussions-moderator',

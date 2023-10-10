@@ -165,8 +165,8 @@ abstract class ExternalWikiGrabber extends Maintenance {
 				// If a user already exists by this name, then append '@fandom' as a user can't create an account with the `@` character.
 				$userIdentity = $this->actorStore->getUserIdentityByName( $name );
 				if ( $userIdentity ) {
-					$this->userMappings[$id] = $name = $name . '@fandom';
 					$this->output( "Notice: The user name $name is already in use, using $name@fandom for ID $id instead.\n" );
+					$this->userMappings[$id] = $name = $name . '@fandom';
 				}
 			}
 		}

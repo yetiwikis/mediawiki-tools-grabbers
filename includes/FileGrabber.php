@@ -296,8 +296,7 @@ abstract class FileGrabber extends ExternalWikiGrabber {
 			$status = $this->downloadFile( $targeturl, $tmpPath, $mime );
 		}
 		if ( $status->isOK() ) {
-			$file = $this->localRepo->newFile( $name, $timestamp );
-			$status = $file->publish( $tmpPath );
+			$status = $this->localRepo->quickImport( $tmpPath, $path );
 			if ( !$status->isOK() ) {
 				$this->output( sprintf( " Error when publishing file %s to the local file repo: %s\n",
 					$name, $status->getWikiText() ) );

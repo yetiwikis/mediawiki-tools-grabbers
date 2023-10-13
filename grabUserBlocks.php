@@ -64,7 +64,8 @@ class GrabUserBlocks extends ExternalWikiGrabber {
 			$result = $this->bot->query( $params );
 
 			if ( empty( $result['query']['blocks'] ) ) {
-				$this->fatalError( 'No blocks, hence nothing to do. Aborting the mission.' );
+				$this->output( 'No blocks, hence nothing to do. Aborting the mission.' );
+				return;
 			}
 
 			foreach ( $result['query']['blocks'] as $logEntry ) {

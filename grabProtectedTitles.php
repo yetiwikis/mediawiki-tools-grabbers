@@ -60,7 +60,8 @@ class GrabProtectedTitles extends ExternalWikiGrabber {
 			$result = $this->bot->query( $params );
 
 			if ( empty( $result['query']['protectedtitles'] ) ) {
-				$this->fatalError( 'No protected titles, hence nothing to do. Aborting the mission.' );
+				$this->output( 'No protected titles, hence nothing to do. Aborting the mission.' );
+				return;
 			}
 
 			foreach ( $result['query']['protectedtitles'] as $logEntry ) {

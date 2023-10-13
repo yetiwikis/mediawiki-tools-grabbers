@@ -291,7 +291,7 @@ abstract class FileGrabber extends ExternalWikiGrabber {
 					$targeturl = "{$fileurl}?purge={$retries}";
 				}
 				# Also wait some time in case the server is temporarily unavailable
-				sleep( 20 * $retries );
+				sleep( 5 * $retries );
 			}
 			$status = $this->downloadFile( $targeturl, $tmpPath, $mime );
 		}

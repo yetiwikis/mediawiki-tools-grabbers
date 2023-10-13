@@ -158,7 +158,9 @@ abstract class ExternalWikiGrabber extends Maintenance {
 				$oldname = $userIdentity->getName();
 				# Cache the new user name for uncompleted user rename.
 				$this->userMappings[$id] = $name = $this->getAndUpdateUserName( $userIdentity );
-				$this->output( "Notice: We encountered an user rename on ID $id, $oldname => $name\n" );
+				if ( $oldname !== $name ) {
+					$this->output( "Notice: We encountered an user rename on ID $id, $oldname => $name\n" );
+				}
 			} elseif ( $userIdentity ) {
 				return $userIdentity;
 			} else {

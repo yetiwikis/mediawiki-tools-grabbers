@@ -28,10 +28,19 @@ class GrabPageRestrictions extends ExternalWikiGrabber {
 		parent::__construct();
 		$this->addDescription( 'Grabs page restrictions from a pre-existing wiki into a new wiki.' );
 		$this->addOption( 'namespaces', 'Pipe-separated namespaces (ID) to grab. Defaults to all namespaces', false, true );
+		$this->addOption( 'truncate', 'Delete existing page restrictions from the new wiki.', false, false );
 	}
 
 	public function execute() {
 		parent::execute();
+
+		if ( $this->hasOption('truncate') ) {
+			$this->output( "Deleting existing page restriction entries...\n" );
+			$this->dbw->truncate(
+				'page_restrictions',
+				__METHOD__
+			);
+		}
 
 		$this->output( "\n" );
 

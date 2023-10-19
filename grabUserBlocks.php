@@ -24,10 +24,19 @@ class GrabUserBlocks extends ExternalWikiGrabber {
 		$this->mDescription = 'Grabs user block data from a pre-existing wiki into a new wiki.';
 		$this->addOption( 'startdate', 'Start point (20121222142317, 2012-12-22T14:23:17Z, etc).', false, true );
 		$this->addOption( 'enddate', 'End point (20121222142317, 2012-12-22T14:23:17Z, etc); defaults to current timestamp.', false, true );
+		$this->addOption( 'truncate', 'Delete existing user block data from the new wiki.', false, false );
 	}
 
 	public function execute() {
 		parent::execute();
+
+		if ( $this->hasOption('truncate') ) {
+			$this->output( "Deleting existing user block entries...\n" );
+			$this->dbw->truncate(
+				'ipblocks',
+				__METHOD__
+			);
+		}
 
 		$startDate = $this->getOption( 'startdate' );
 		if ( $startDate ) {

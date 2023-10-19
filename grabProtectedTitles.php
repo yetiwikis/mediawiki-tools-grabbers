@@ -20,10 +20,19 @@ class GrabProtectedTitles extends ExternalWikiGrabber {
 		$this->mDescription = 'Grabs protected titles from a pre-existing wiki into a new wiki.';
 		$this->addOption( 'startdate', 'Start point (20121222142317, 2012-12-22T14:23:17Z, etc).', false, true );
 		$this->addOption( 'enddate', 'End point (20121222142317, 2012-12-22T14:23:17Z, etc); defaults to current timestamp.', false, true );
+		$this->addOption( 'truncate', 'Delete existing protected titles from the new wiki.', false, false );
 	}
 
 	public function execute() {
 		parent::execute();
+
+		if ( $this->hasOption('truncate') ) {
+			$this->output( "Deleting existing protected title entries...\n" );
+			$this->dbw->truncate(
+				'protected_titles',
+				__METHOD__
+			);
+		}
 
 		$startDate = $this->getOption( 'startdate' );
 		if ( $startDate ) {

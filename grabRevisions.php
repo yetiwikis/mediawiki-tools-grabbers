@@ -21,6 +21,7 @@ class GrabRevisions extends TextGrabber {
 		$this->addOption( 'arvend', 'Timestamp at which to end', false, true );
 		$this->addOption( 'new-revisions', 'Resume from the latest revision\'s timestamp.' );
 		$this->addOption( 'namespaces', 'Pipe-separated namespaces (ID) to grab. Defaults to all namespaces', false, true );
+		$this->addOption( 'refreshlinks', 'Create refreshLinks jobs for changed pages.' );
 	}
 
 	public function execute() {
@@ -267,6 +268,15 @@ class GrabRevisions extends TextGrabber {
 		}
 
 		$this->output( "$revisionCount revisions processed in namespace $ns.\n" );
+
+		if ( $this->getOption( 'refreshlinks' ) ) {
+			$this->output( "Adding refreshLinks jobs for changed pages.\n" );
+			foreach ( $pageMap as $id => $unused ) {
+				$title = Title::newFromId( $id );
+				$job = new RefreshLinksJob( $title, [] );
+				MediaWikiServices::getInstance()->getJobQueueGroup()->push( $job );
+			}
+		}
 
 		return count( $pageMap );
 	}

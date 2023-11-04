@@ -47,7 +47,7 @@ class GrabNewFiles extends FileGrabber {
 	public function __construct() {
 		parent::__construct();
 		$this->mDescription = "Grabs updates to files from an external wiki\nFor use when files have been imported already and want to keep track of new uploads.";
-		$this->addOption( 'startdate', 'Start point (20121222142317, 2012-12-22T14:23:17Z, etc); note that this cannot go back further than 1-3 months on most projects.', true /* required? */, true /* withArg */ );
+		$this->addOption( 'startdate', 'Start point (20121222142317, 2012-12-22T14:23:17Z, etc); note that this cannot go back further than 1-3 months on most projects. If a start date is not provided, the last image timestamp in the database is used.', false /* required? */, true /* withArg */ );
 		$this->addOption( 'enddate', 'Date after which to ignore new files (20121222142317, 2012-12-22T14:23:17Z, etc); note that the process may fail to process existing files that have been moved after this date', false, true );
 	}
 
@@ -61,7 +61,19 @@ class GrabNewFiles extends FileGrabber {
 				$this->fatalError( 'Invalid startdate format.' );
 			}
 		} else {
-			$this->fatalError( 'A timestamp to start from is required.' );
+			// If a start date was not provided, use the latest timestamp from the database.
+			$this->startDate = $this->dbw->selectField(
+				'image',
+				'img_timestamp',
+				[],
+				__METHOD__,
+				[ 'ORDER BY' => 'img_timestamp DESC' ]
+			);
+			if ( !$this->startDate ) {
+				$this->fatalError( 'No startdate provided, and no images found in our DB.' );
+			}
+
+			$this->output( "Using the latest image timestamp in our database: $this->startDate\n" );
 		}
 
 		$this->endDate = $this->getOption( 'enddate' );

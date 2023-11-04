@@ -130,6 +130,13 @@ abstract class FileGrabber extends ExternalWikiGrabber {
 		] + $commentFields;
 		$this->dbw->insert( 'image', $e, __METHOD__ );
 		$status = $this->storeFileFromURL( $name, $fileurl, false, $mime, $file_e['sha1'] );
+
+		// Refresh image metadata
+		if ( $status->isOK() ) {
+			$file = $this->localRepo->newFileFromRow( $e );
+			$file->upgradeRow();
+		}
+
 		$this->output( "Done\n" );
 		return $status;
 	}
@@ -242,7 +249,15 @@ abstract class FileGrabber extends ExternalWikiGrabber {
 		if ( !$historyExists ) {
 			$this->dbw->insert( 'oldimage', $e, __METHOD__ );
 		}
+
 		$status = $this->storeFileFromURL( $name, $fileurl, $file_e['timestamp'], $mime, $file_e['sha1'], $fileVersion['archivename'] );
+
+		// Refresh image metadata
+		if ( $status->isOK() ) {
+			$file = $this->localRepo->newFileFromRow( $e );
+			$file->upgradeRow();
+		}
+
 		$this->output( "Done\n" );
 		return $status;
 	}

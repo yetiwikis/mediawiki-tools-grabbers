@@ -10,8 +10,7 @@
  * @note Based on code by Jack Phoenix and Edward Chernenko.
  */
 
-require_once __DIR__ . '/../maintenance/Maintenance.php';
-require_once 'includes/mediawikibot.class.php';
+require_once 'includes/FileGrabber.php';
 
 class GrabDeletedFiles extends FileGrabber {
 

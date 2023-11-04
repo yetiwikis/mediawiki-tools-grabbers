@@ -133,7 +133,7 @@ abstract class FileGrabber extends ExternalWikiGrabber {
 
 		// Refresh image metadata
 		if ( $status->isOK() ) {
-			$file = $this->localRepo->newFileFromRow( $e );
+			$file = $this->localRepo->newFile( $name );
 			$file->upgradeRow();
 		}
 
@@ -254,7 +254,7 @@ abstract class FileGrabber extends ExternalWikiGrabber {
 
 		// Refresh image metadata
 		if ( $status->isOK() ) {
-			$file = $this->localRepo->newFileFromRow( $e );
+			$file = $this->localRepo->newFromArchiveName( $name, $fileVersion['archivename'] );
 			$file->upgradeRow();
 		}
 

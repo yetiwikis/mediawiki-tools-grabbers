@@ -202,22 +202,22 @@ class GrabDeletedFiles extends FileGrabber {
 
 					break;
 				}
-			}
-			if ( !$fileContent[0] ) {
-				$this->output( "\n$fileContent[1]\n" );
-				return false;
-			} else {
-				# Errors handled; set to just actual content now
-				$fileContent = $fileContent[1];
-				# For debugging: quick visual check if it's even actually a file
-				$this->output( " (first four characters: " . substr( $fileContent, 0, 4 ) . ")" );
+				if ( !$fileContent[0] ) {
+					$this->output( "\n$fileContent[1]\n" );
+					return false;
+				} else {
+					# Errors handled; set to just actual content now
+					$fileContent = $fileContent[1];
+					# For debugging: quick visual check if it's even actually a file
+					$this->output( " (first four characters: " . substr( $fileContent, 0, 4 ) . ")" );
+
+					return $fileContent;
+				}
 			}
 		} else {
 			$this->output( "$specialUndeletePage[1]\n" );
 			return false;
 		}
-
-		return $fileContent;
 	}
 
 	function processFile( $entry ) {

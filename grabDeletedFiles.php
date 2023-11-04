@@ -221,6 +221,11 @@ class GrabDeletedFiles extends FileGrabber {
 	}
 
 	function processFile( $entry ) {
+		// Can't view this file.
+		if ( !isset( $entry['size'] ) ) {
+			return;
+		}
+
 		if ( $entry['user'] ) {
 			$actor = $this->getActorFromUser( (int)$entry['userid'], $entry['user'] );
 		} else {

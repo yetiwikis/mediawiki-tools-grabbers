@@ -112,6 +112,9 @@ class MediaWikiBot {
 	 */
 	protected $retryTimes = array( 10, 30, 60, 120 );
 
+	protected $fandomAuth = false;
+	protected $fandomAppId;
+
 	/** Constructor
 	 */
 	public function __construct(
@@ -207,6 +210,70 @@ class MediaWikiBot {
 		}
 	}
 
+	/** Log in and get the authentication tokens using Fandom's authentication system
+	 *
+	 *  It returns null if success, or an array on failure
+	 */
+	public function fandom_login( $fandomAppId ) {
+		$this->fandomAuth = true;
+		$this->fandomAppId = $fandomAppId;
+
+		// Check if already logged-in to avoid hitting limits if running multiple times in quick succession.
+		if ( !is_array( $this->fandom_whoami() ) ) {
+			return null;
+		}
+
+		// Perform Fandom login
+		$data = $this->curl_post( 'https://services.fandom.com/mobile-fandom-app/fandom-auth/login', [
+			'username' => USERNAME,
+			'password' => PASSWORD,
+		] );
+		$responseCode = curl_getinfo( $this->ch, CURLINFO_RESPONSE_CODE );
+		if ( $responseCode !== 200 ) {
+			return [
+				'login' => [
+					'reason' => "Response code $responseCode returned while logging in",
+				],
+			];
+		} elseif ( !is_array( $data ) ) {
+			$errno = curl_errno( $this->ch );
+			return [
+				'login' => [
+					'reason' => "Curl errno $errno returned while logging in",
+				],
+			];
+		}
+		// Verify login was successful.
+		return $this->fandom_whoami();
+	}
+
+	/** Check if logged in using Fandom's authentication system
+	 *
+	 *  It returns null if success, or an array on failure
+	 */
+	public function fandom_whoami() {
+		// Verify login was successful.
+		$data = $this->curl_get( 'https://services.fandom.com/whoami' );
+		$responseCode = curl_getinfo( $this->ch, CURLINFO_RESPONSE_CODE );
+		if ( $responseCode !== 200 ) {
+			return [
+				'login' => [
+					'reason' => "Response code $responseCode returned while verifying login",
+				],
+			];
+		} elseif ( !is_array( $data ) ) {
+			$errno = curl_errno( $this->ch );
+			return [
+				'login' => [
+					'reason' => "Curl errno $errno returned while verifying login",
+				],
+			];
+		}
+
+		// Success
+		return null;
+	}
+
 	/** Standard processesing method
 	 *
 	 *  The standard process methods calls the correct api url with params
@@ -260,6 +327,13 @@ class MediaWikiBot {
 		curl_setopt( $this->ch, CURLOPT_MAXREDIRS, 5 );
 		curl_setopt( $this->ch, CURLOPT_COOKIEFILE, COOKIES );
 		curl_setopt( $this->ch, CURLOPT_COOKIEJAR, COOKIES );
+		# support Fandom auth
+		if ( $this->fandomAuth ) {
+			curl_setopt( $this->ch, CURLOPT_HTTPHEADER, [
+				'X-Fandom-Auth' => '1',
+				'X-Wikia-WikiaAppsID' => $this->fandomAppId,
+			] );
+		}
 
 		# execute the get
 		$results = curl_exec( $this->ch );
@@ -290,6 +364,13 @@ class MediaWikiBot {
 		curl_setopt( $this->ch, CURLOPT_TIMEOUT, 30 );
 		curl_setopt( $this->ch, CURLOPT_COOKIEFILE, COOKIES );
 		curl_setopt( $this->ch, CURLOPT_COOKIEJAR, COOKIES );
+		# support Fandom auth
+		if ( $this->fandomAuth ) {
+			curl_setopt( $this->ch, CURLOPT_HTTPHEADER, [
+				'X-Fandom-Auth' => '1',
+				'X-Wikia-WikiaAppsID' => $this->fandomAppId,
+			] );
+		}
 		curl_setopt( $this->ch, CURLOPT_POST, count( $params ) );
 		# choose multipart if necessary
 		if ( $multipart ) {

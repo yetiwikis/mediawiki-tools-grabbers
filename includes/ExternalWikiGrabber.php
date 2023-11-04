@@ -51,6 +51,9 @@ abstract class ExternalWikiGrabber extends Maintenance {
 		$this->addOption( 'url', 'URL to the target wiki\'s api.php', true /* required? */, true /* withArg */, 'u' );
 		$this->addOption( 'username', 'Username to log into the target wiki', false, true, 'n' );
 		$this->addOption( 'password', 'Password on the target wiki', false, true, 'p' );
+		$this->addOption( 'useragent', 'User agent to use on the target wiki', false, true );
+		$this->addOption( 'fandom-auth', 'Use Fandom\'s authentication system', false, false );
+		$this->addOption( 'fandom-app-id', 'App ID to use with Fandom\'s authentication system', false, true );
 		$this->addOption( 'db', 'Database name, if we don\'t want to write to $wgDBname', false, true );
 	}
 
@@ -64,6 +67,8 @@ abstract class ExternalWikiGrabber extends Maintenance {
 
 		$user = $this->getOption( 'username' );
 		$password = $this->getOption( 'password' );
+		$useragent = $this->getOption( 'useragent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36' );
+		$fandomAppId = $this->getOption( 'fandom-app-id', '1234' );
 
 		# bot class and log in if requested
 		if ( $user && $password ) {
@@ -72,9 +77,13 @@ abstract class ExternalWikiGrabber extends Maintenance {
 				'json',
 				$user,
 				$password,
-				'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36'
+				$useragent
 			);
-			$error = $this->bot->login();
+			if ( $this->getOption( 'fandom-auth' ) ) {
+				$error = $this->bot->fandom_login( $fandomAppId );
+			} else {
+				$error = $this->bot->login();
+			}
 			if ( !$error ) {
 				$this->output( "Logged in as $user...\n" );
 			} else {
@@ -87,7 +96,7 @@ abstract class ExternalWikiGrabber extends Maintenance {
 				'json',
 				'',
 				'',
-				'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36'
+				$useragent
 			);
 		}
 

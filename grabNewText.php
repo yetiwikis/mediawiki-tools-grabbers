@@ -120,8 +120,10 @@ class GrabNewText extends TextGrabber {
 				$this->fixRedirect( $id );
 
 				$title = Title::newFromId( $id );
-				$job = new RefreshLinksJob( $title, [] );
-				MediaWikiServices::getInstance()->getJobQueueGroup()->push( $job );
+				if ( $title ) {
+					$job = new RefreshLinksJob( $title, [] );
+					MediaWikiServices::getInstance()->getJobQueueGroup()->push( $job );
+				}
 			}
 		}
 

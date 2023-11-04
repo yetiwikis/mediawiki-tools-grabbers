@@ -13,6 +13,7 @@
  */
 
 use MediaWiki\MediaWikiServices;
+use MediaWiki\Revision\RevisionRecord;
 
 require_once 'includes/TextGrabber.php';
 
@@ -115,6 +116,9 @@ class GrabNewText extends TextGrabber {
 		if ( $this->getOption( 'refreshlinks' ) ) {
 			$this->output( "Adding refreshLinks jobs for changed pages.\n" );
 			foreach ( $this->pagesProcessed as $id ) {
+				// Ensure redirects are correct.
+				$this->fixRedirect( $id );
+
 				$title = Title::newFromId( $id );
 				$job = new RefreshLinksJob( $title, [] );
 				MediaWikiServices::getInstance()->getJobQueueGroup()->push( $job );
@@ -831,6 +835,48 @@ class GrabNewText extends TextGrabber {
 				$this->pagesProcessed[] = $remoteID;
 			}
 		}
+	}
+
+	// Copied from mediawiki core's maintenance/refreshLinks.php.
+	/**
+	 * Update the redirect entry for a given page.
+	 *
+	 * This methods bypasses the "redirect" table to get the redirect target,
+	 * and parses the page's content to fetch it. This allows to be sure that
+	 * the redirect target is up to date and valid.
+	 *
+	 * @param int $id The page ID to check
+	 */
+	private function fixRedirect( $id ) {
+		$page = MediaWikiServices::getInstance()->getWikiPageFactory()->newFromID( $id );
+		if ( $page === null ) {
+			// This page doesn't exist (any more)
+			// Delete any redirect table entry for it
+			$this->dbw->delete( 'redirect', [ 'rd_from' => $id ],
+				__METHOD__ );
+
+			return;
+		}
+
+		$rt = null;
+		$content = $page->getContent( RevisionRecord::RAW );
+		if ( $content !== null ) {
+			$rt = $content->getRedirectTarget();
+		}
+
+		if ( $rt === null ) {
+			// The page is not a redirect
+			// Delete any redirect table entry for it
+			$this->dbw->delete( 'redirect', [ 'rd_from' => $id ], __METHOD__ );
+			$fieldValue = 0;
+		} else {
+			$page->insertRedirectEntry( $rt );
+			$fieldValue = 1;
+		}
+
+		// Update the page table to be sure it is an a consistent state
+		$this->dbw->update( 'page', [ 'page_is_redirect' => $fieldValue ],
+			[ 'page_id' => $id ], __METHOD__ );
 	}
 }
 

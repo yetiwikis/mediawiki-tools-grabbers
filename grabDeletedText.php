@@ -178,6 +178,7 @@ class GrabDeletedText extends TextGrabber {
 
 		$ns = $pageChunk['ns'];
 		$title = $this->sanitiseTitle( $ns, $pageChunk['title'] );
+		$defaultModel = MediaWikiServices::getInstance()->getNamespaceInfo()->getNamespaceContentModel( $ns ) || CONTENT_MODEL_WIKITEXT;
 
 		$this->output( "Processing {$pageChunk['title']}\n" );
 
@@ -198,6 +199,10 @@ class GrabDeletedText extends TextGrabber {
 				$this->output( sprintf( "WARNING: Got revision without revision id, " .
 					"with timestamp %s. Skipping!\n", $revision['timestamp'] ) );
 				continue;
+			}
+
+			if ( !isset( $revision['contentmodel'] ) ) {
+				$revision['contentmodel'] = $defaultModel;
 			}
 
 			$titleObj = Title::makeTitle( $ns, $title );

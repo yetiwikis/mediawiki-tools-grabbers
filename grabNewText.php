@@ -621,6 +621,7 @@ class GrabNewText extends TextGrabber {
 	 **/
 	function updateDeletedRevs( $ns, $title ) {
 		$pageTitle = Title::makeTitle( $ns, $title );
+		$defaultModel = MediaWikiServices::getInstance()->getNamespaceInfo()->getNamespaceContentModel( $ns ) || CONTENT_MODEL_WIKITEXT;
 		if ( !$this->canSeeDeletedRevs ) {
 			$this->output( "Unable to see deleted revisions for title $pageTitle\n" );
 			return;
@@ -672,6 +673,9 @@ class GrabNewText extends TextGrabber {
 					__METHOD__
 				);
 				if ( !$count ) {
+					if ( !isset( $revision['contentmodel'] ) ) {
+						$revision['contentmodel'] = $defaultModel;
+					}
 					$this->insertArchivedRevision( $revision, $pageTitle );
 				}
 			}

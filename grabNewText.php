@@ -739,7 +739,9 @@ class GrabNewText extends TextGrabber {
 					# Whoops...
 					$this->resolveConflictingTitle( $remotePageNs, $remotePageTitle, $pageID, $conflictingPageID );
 				}
-				$this->output( sprintf( "Page ID $pageID has been moved on remote wiki. Moving $sourceTitle to %s...\n",
+				$this->output( sprintf( "Page ID %s has been moved on remote wiki. Moving %s to %s...\n",
+					$pageID,
+					$sourceTitle,
 					Title::makeTitle( $remotePageNs, $remotePageTitle ) ) );
 				$this->dbw->update(
 					'page',
@@ -811,7 +813,9 @@ class GrabNewText extends TextGrabber {
 			);
 			if ( $row ) {
 				# Page exists under a different title, move it
-				$this->output( sprintf( "Page ID $remoteID has been moved on remote wiki. Moving %s to $sourceTitle...\n",
+				$this->output( sprintf( "Page ID %s has been moved on remote wiki. Moving %s to %s...\n",
+					$remoteID,
+					$sourceTitle,
 					Title::makeTitle( $row->page_namespace, $row->page_title ) ) );
 				$this->dbw->update(
 					'page',

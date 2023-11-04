@@ -29,19 +29,11 @@ class GrabDeletedFiles extends FileGrabber {
 	public function execute() {
 		parent::execute();
 
-		$url = $this->getOption( 'url' );
 		$imagesurl = $this->getOption( 'imagesurl' );
 		$scrape = $this->hasOption( 'scrape' );
 		if ( !$imagesurl && !$scrape ) {
 			$this->fatalError( 'Unless we\'re screenscraping it, the URL to the target wiki\'s images directory is required.' );
 		}
-		$this->user = $this->getOption( 'username' );
-		$password = $this->getOption( 'password' );
-		if ( !$this->user || !$password ) {
-			$this->fatalError( 'An admin username and password are required.' );
-		}
-
-		$this->output( "Working...\n" );
 
 		$skipMetaData = $this->hasOption( 'skipmetadata' );
 
@@ -229,23 +221,13 @@ class GrabDeletedFiles extends FileGrabber {
 	}
 
 	function processFile( $entry ) {
-		$comment = $entry['description'] ?? '';
-
-		$actor = $this->getActorFromUser( (int)$entry['userid'], $entry['user'] );
-
-		$commentFields = $this->commentStore->insert( $this->dbw, 'fa_description', $comment );
-
-		$comment = $entry['description'];
-		if ( !$comment ) {
-			$comment = '';
-		}
-
 		if ( $entry['user'] ) {
 			$actor = $this->getActorFromUser( (int)$entry['userid'], $entry['user'] );
 		} else {
 			$actor = 0;
 		}
 
+		$comment = $entry['description'] ?? '';
 		$commentFields = $this->commentStore->insert( $this->dbw, 'fa_description', $comment );
 
 		$e = [

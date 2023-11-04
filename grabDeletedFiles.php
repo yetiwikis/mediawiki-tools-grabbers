@@ -160,7 +160,7 @@ class GrabDeletedFiles extends FileGrabber {
 
 		if ( $specialUndeletePage[0] ) {
 			$numMatches = preg_match_all(
-				'/<a href="(.*target=.*file=.*token=[a-zA-Z0-9%]*)"/',
+				'/<a href="([^"]+\?target=.*file=.*token=[a-zA-Z0-9%]*)"/',
 				$specialUndeletePage[1], $matches, PREG_SET_ORDER
 			);
 

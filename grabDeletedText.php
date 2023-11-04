@@ -178,7 +178,7 @@ class GrabDeletedText extends TextGrabber {
 
 		$ns = $pageChunk['ns'];
 		$title = $this->sanitiseTitle( $ns, $pageChunk['title'] );
-		$defaultModel = MediaWikiServices::getInstance()->getNamespaceInfo()->getNamespaceContentModel( $ns ) || CONTENT_MODEL_WIKITEXT;
+		$defaultModel = MediaWikiServices::getInstance()->getNamespaceInfo()->getNamespaceContentModel( $ns ) ?? CONTENT_MODEL_WIKITEXT;
 
 		$this->output( "Processing {$pageChunk['title']}\n" );
 

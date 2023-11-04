@@ -292,7 +292,7 @@ TEXT
 			# However it calls hooks and can be incredibly slow or cause errors
 			# $defaultModel = ContentHandler::getDefaultModelFor( $title );
 			$defaultModel = MediaWikiServices::getInstance()->getNamespaceInfo()
-				->getNamespaceContentModel( $pageInfo['ns'] ) || CONTENT_MODEL_WIKITEXT;
+				->getNamespaceContentModel( $pageInfo['ns'] ) ?? CONTENT_MODEL_WIKITEXT;
 			# Set only if not the default content model
 			if ( $defaultModel != $revisionInfo['model'] ) {
 				$page_e['content_model'] = $revisionInfo['model'];

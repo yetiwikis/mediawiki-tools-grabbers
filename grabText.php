@@ -218,7 +218,7 @@ class GrabText extends TextGrabber {
 			# However it calls hooks and can be incredibly slow or cause errors
 			#$defaultModel = ContentHandler::getDefaultModelFor( $title );
 			$defaultModel = MediaWikiServices::getInstance()->getNamespaceInfo()->
-				getNamespaceContentModel( $info_pages[0]['ns'] ) || CONTENT_MODEL_WIKITEXT;
+				getNamespaceContentModel( $info_pages[0]['ns'] ) ?? CONTENT_MODEL_WIKITEXT;
 			# Set only if not the default content model
 			if ( $defaultModel != $info_pages[0]['contentmodel'] ) {
 				$page_e['content_model'] = $info_pages[0]['contentmodel'];

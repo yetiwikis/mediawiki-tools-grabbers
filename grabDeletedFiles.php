@@ -226,7 +226,7 @@ class GrabDeletedFiles extends FileGrabber {
 			return;
 		}
 
-		if ( $entry['user'] ) {
+		if ( isset( $entry['user'] ) ) {
 			$actor = $this->getActorFromUser( (int)$entry['userid'], $entry['user'] );
 		} else {
 			$actor = 0;

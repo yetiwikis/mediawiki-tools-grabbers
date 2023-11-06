@@ -29,8 +29,8 @@ class GrabAbuseFilter extends ExternalWikiGrabber {
 		$params = [
 			'list' => 'abusefilters',
 			'abflimit' => 'max',
-			'ledir' => 'newer',
-			'leprop' => 'id|description|pattern|actions|hits|comments|lasteditor|lastedittime|status|private',
+			'abfdir' => 'newer',
+			'abfprop' => 'id|description|pattern|actions|hits|comments|lasteditor|lastedittime|status|private',
 		];
 
 		$more = true;

@@ -102,11 +102,11 @@ class GrabImages extends FileGrabber {
 				return 0;
 			}
 
-			$url = $this->sanitiseUrl( $fileVersion['url'], $fileVersion['mime'] );
+			$url = $this->sanitiseUrl( $fileVersion['url'] );
 			$sha1 = Wikimedia\base_convert( $fileVersion['sha1'], 16, 36, 31 );
 			$path = "$folder/$name";
 
-			$status = $this->downloadFile( $url, $path, $fileVersion['mime'], $sha1 );
+			$status = $this->downloadFile( $url, $path, $sha1 );
 
 			if ( $status->isOK() ) {
 				$count++;

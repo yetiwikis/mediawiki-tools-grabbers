@@ -77,7 +77,7 @@ abstract class FileGrabber extends ExternalWikiGrabber {
 			$status = Status::newFatal( 'SKIPPED' ); # Not an existing message but whatever
 			return $status;
 		}
-		$fileurl = $this->sanitiseUrl( $fileVersion['url'], $fileVersion['mime'] );
+		$fileurl = $this->sanitiseUrl( $fileVersion['url'] );
 
 		$comment = $fileVersion['comment'];
 		if ( !$comment ) {
@@ -129,7 +129,7 @@ abstract class FileGrabber extends ExternalWikiGrabber {
 			'img_minor_mime' => $file_e['minor_mime']
 		] + $commentFields;
 		$this->dbw->insert( 'image', $e, __METHOD__ );
-		$status = $this->storeFileFromURL( $name, $fileurl, false, $mime, $file_e['sha1'] );
+		$status = $this->storeFileFromURL( $name, $fileurl, false, $file_e['sha1'] );
 
 		// Refresh image metadata
 		if ( $status->isOK() ) {
@@ -188,7 +188,7 @@ abstract class FileGrabber extends ExternalWikiGrabber {
 			$filedeleted = $filedeleted | File::DELETED_RESTRICTED;
 		}
 
-		$fileurl = $this->sanitiseUrl( $fileVersion['url'], $fileVersion['mime'] );
+		$fileurl = $this->sanitiseUrl( $fileVersion['url'] );
 
 		$file_e = [
 			'name' => $name,
@@ -250,7 +250,7 @@ abstract class FileGrabber extends ExternalWikiGrabber {
 			$this->dbw->insert( 'oldimage', $e, __METHOD__ );
 		}
 
-		$status = $this->storeFileFromURL( $name, $fileurl, $file_e['timestamp'], $mime, $file_e['sha1'], $fileVersion['archivename'] );
+		$status = $this->storeFileFromURL( $name, $fileurl, $file_e['timestamp'], $file_e['sha1'], $fileVersion['archivename'] );
 
 		// Refresh image metadata
 		if ( $status->isOK() ) {
@@ -271,7 +271,7 @@ abstract class FileGrabber extends ExternalWikiGrabber {
 	 * @param string $sha1 sha of the file to ensure that it's not corrupt
 	 * @return Status status of the operation
 	 */
-	function storeFileFromURL( $name, $fileurl, $timestamp, $mime, $sha1, $archiveName = null ) {
+	function storeFileFromURL( $name, $fileurl, $timestamp, $sha1, $archiveName = null ) {
 		// Check for existing file in repo. Can't use LocalFile/OldLocalFile as that uses the DB.
 		if ( $archiveName ) {
 			$path = $this->localRepo->getZonePath( 'public' ) . "/archive/$archiveName";
@@ -308,7 +308,7 @@ abstract class FileGrabber extends ExternalWikiGrabber {
 				# Also wait some time in case the server is temporarily unavailable
 				sleep( 5 * $retries );
 			}
-			$status = $this->downloadFile( $targeturl, $tmpPath, $mime );
+			$status = $this->downloadFile( $targeturl, $tmpPath, $sha1 );
 		}
 		if ( $status->isOK() ) {
 			$status = $this->localRepo->quickImport( $tmpPath, $path );
@@ -331,7 +331,7 @@ abstract class FileGrabber extends ExternalWikiGrabber {
 	 * @param string $sha1 sha of the file to ensure that it's not corrupt (optional)
 	 * @return Status status of the operation
 	 */
-	function downloadFile( $fileurl, $targetTempFile, $mime, $sha1 = null ) {
+	function downloadFile( $fileurl, $targetTempFile, $sha1 = null ) {
 		$this->mTmpHandle = fopen( $targetTempFile, 'wb' );
 		if (!$this->mTmpHandle) {
 			$status = Status::newFatal( 'CANTCREATEFILE' ); # Not an existing message but whatever
@@ -339,9 +339,6 @@ abstract class FileGrabber extends ExternalWikiGrabber {
 		}
 		$req = MediaWikiServices::getInstance()->getHttpRequestFactory()
 			->create( $fileurl, [ 'timeout' => 90 ], __METHOD__ );
-		if ( $mime == 'image/webp') {
-			$req->setHeader( 'Accept', 'image/webp' );
-		}
 		$req->setCallback( [ $this, 'saveTempFileChunk' ] );
 		$status = $req->execute();
 		fclose( $this->mTmpHandle );
@@ -439,9 +436,8 @@ abstract class FileGrabber extends ExternalWikiGrabber {
 	 * @param $fileurl string URL of the file
 	 * @returns string sanitised URL
 	 */
-	function sanitiseUrl( $fileurl, $mime ) {
-		// Fandom handles webp backwards, only serving the original if the original isn't requested.
-		if ( $this->isWikia && $mime != 'image/webp' ) {
+	function sanitiseUrl( $fileurl ) {
+		if ( $this->isWikia ) {
 			# Wikia is now serving "optimised" lossy images instead of the originals
 			# See http://community.wikia.com/wiki/Thread:1200407
 			# Add format=original to the URL to hopefully force it to download the original

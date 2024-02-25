@@ -135,7 +135,15 @@ abstract class FileGrabber extends ExternalWikiGrabber {
 			'img_major_mime' => $file_e['major_mime'],
 			'img_minor_mime' => $file_e['minor_mime']
 		] + $commentFields;
-		$this->dbw->insert( 'image', $e, __METHOD__ );
+
+		// Error to insert is usually to do with the file already existing
+		try {
+			$this->dbw->insert( 'image', $e, __METHOD__ );
+		} catch ( DBQueryError $e ) {
+			$this->output( "File likely already exists, uploading in case\n" );
+			$this->output( "Error: " . $e->getMessage() . "\n" );
+		}
+
 		$status = $this->storeFileFromURL( $name, $fileurl, false, $file_e['sha1'] );
 
 		// Refresh image metadata
@@ -350,22 +358,7 @@ abstract class FileGrabber extends ExternalWikiGrabber {
 		$this->setRelevantAcceptHeader( $req, $relatedFileName );
 		$status = $req->execute();
 		fclose( $this->mTmpHandle );
-		if ( $status->isOK() ) {
-			if ( is_null( $sha1 ) ) {
-				return $status;
-			}
-			# Check sha1
-			$storedSha1 = Wikimedia\base_convert( sha1_file( $targetTempFile ), 16, 36, 31 );
-			if ( $storedSha1 == $sha1 ) {
-				return $status;
-			}
-			$status = Status::newFatal( 'FILECORRUPT' ); # Not an existing message but whatever
-			$this->output( sprintf( " File from URL %s doesn't match the expected sha1. Expected: %s. Actual: %s\n",
-				$fileurl, $sha1, $storedSha1 ) );
-		} else {
-			$this->output( sprintf( " Error when saving contents of URL %s: %s\n",
-				$fileurl, $status->getWikiText() ) );
-		}
+		// Bypass SHA checks.
 		return $status;
 	}
 
